@@ -5,6 +5,7 @@ import 'package:roblox_dart/luau/luau_call_expression.dart';
 import 'package:roblox_dart/luau/luau_function.dart';
 import 'package:roblox_dart/luau/luau_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
+import 'package:roblox_dart/luau/luau_variable_declaration.dart';
 
 class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
@@ -29,6 +30,13 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
   LuauNode? visitExpressionStatement(ExpressionStatement node) {
     return node.expression.accept(this);
+  }
+
+  @override
+  LuauNode? visitVariableDeclarationStatement(
+    VariableDeclarationStatement node,
+  ) {
+    return node.variables.accept(this);
   }
 
   @override
@@ -124,5 +132,39 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
   LuauNode? visitInterpolationString(InterpolationString node) {
     return LuauLiteral(value: node.value);
+  }
+
+  @override
+  LuauNode? visitVariableDeclarationList(VariableDeclarationList node) {
+    final declarationDart = node.variables.first;
+
+    final name = declarationDart.name.lexeme;
+
+    String? luauType;
+
+    if (node.type != null) {
+      final dartType = node.type!.toSource();
+
+      const tipados = {
+        "int": "number",
+        "double": "number",
+        "String": "string",
+        "bool": "boolean",
+      };
+
+      luauType = tipados[dartType] ?? "any";
+    }
+
+    LuauNode? valueLego;
+
+    if (declarationDart.initializer != null) {
+      valueLego = declarationDart.initializer!.accept(this);
+    }
+
+    return LuauVariableDeclaration(
+      name: name,
+      initializer: valueLego,
+      type: luauType,
+    );
   }
 }

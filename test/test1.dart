@@ -1,13 +1,14 @@
 void main() {
-  print("Hello");
+  int hp = 100;
+  final int damage = 25;
 
-  print("Roblox");
+  final int finalHp = hp - damage;
 
-  print(5 + 2);
+  print("Player has $finalHp HP");
 
-  print("Hola " + "Roblox");
+  final String name = "Roblox";
 
-  print("Hola ${5 + 2} Roblox");
+  print("$name has $finalHp HP");
 
-  print(5 + 2 * (6 / 2));
+  print(finalHp);
 }

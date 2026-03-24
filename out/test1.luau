@@ -1,16 +1,18 @@
 local function main()
 
-	print("Hello")
+	local hp: number = 100
 
-	print("Roblox")
+	local damage: number = 25
 
-	print(5 + 2)
+	local finalHp: number = hp - damage
 
-	print("Hola " .. "Roblox")
+	print(`Player has {finalHp} HP`)
 
-	print(`Hola {5 + 2} Roblox`)
+	local name: string = "Roblox"
 
-	print(5 + 2 * (6 / 2))
+	print(`{name} has {finalHp} HP`)
+
+	print(finalHp)
 
 end
 
