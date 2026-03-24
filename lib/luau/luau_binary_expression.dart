@@ -12,7 +12,7 @@ class LuauBinaryExpression extends LuauNode {
   });
 
   @override
-  String emit() {
+  String emit({int indent = 0}) {
     return "${left.emit()} $operator ${right.emit()}";
   }
 }

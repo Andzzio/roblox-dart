@@ -1,3 +1,3 @@
 abstract class LuauNode {
-  String emit();
+  String emit({int indent = 0});
 }

@@ -7,8 +7,10 @@ class LuauCallExpression extends LuauNode {
   LuauCallExpression({required this.methodName, required this.arguments});
 
   @override
-  String emit() {
+  String emit({int indent = 0}) {
+    final String tabs = "\t" * indent;
+
     final String argsText = arguments.map((arg) => arg.emit()).join(", ");
-    return "\t$methodName($argsText)\n\n";
+    return "$tabs$methodName($argsText)\n\n";
   }
 }

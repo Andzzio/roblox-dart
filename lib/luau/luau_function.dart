@@ -7,17 +7,19 @@ class LuauFunction extends LuauNode {
   LuauFunction({required this.name, required this.body});
 
   @override
-  String emit() {
-    String output = "local function $name()\n\n";
+  String emit({int indent = 0}) {
+    final String tabs = "\t" * indent;
+
+    String output = "${tabs}local function $name()\n\n";
 
     for (var node in body) {
-      output += node.emit();
+      output += node.emit(indent: indent + 1);
     }
 
-    output += "end\n\n";
+    output += "${tabs}end\n\n";
 
     if (name == "main") {
-      output += "$name()\n\n";
+      output += "$tabs$name()\n\n";
     }
 
     return output;

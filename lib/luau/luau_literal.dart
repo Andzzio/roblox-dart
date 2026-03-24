@@ -6,7 +6,7 @@ class LuauLiteral extends LuauNode {
   LuauLiteral({required this.value});
 
   @override
-  String emit() {
+  String emit({int indent = 0}) {
     return value;
   }
 }
