@@ -23,11 +23,11 @@ class RobloxVisitor extends RecursiveAstVisitor<void> {
   void visitMethodInvocation(MethodInvocation node) {
     final String methodName = node.methodName.name;
 
-    if (methodName == "print") {
-      final String rawArg = node.argumentList.arguments.first.toSource();
+    final String methodArgs = node.argumentList.arguments
+        .map((arg) => arg.toSource())
+        .join(", ");
 
-      luauOutput += "\tprint($rawArg)\n";
-    }
+    luauOutput += "\t$methodName($methodArgs)\n\n";
 
     super.visitMethodInvocation(node);
   }
