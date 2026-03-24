@@ -90,4 +90,39 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
     return null;
   }
+
+  @override
+  LuauNode? visitSimpleIdentifier(SimpleIdentifier node) {
+    return LuauLiteral(value: node.name);
+  }
+
+  @override
+  LuauNode? visitStringInterpolation(StringInterpolation node) {
+    String luauInterpolatedText = "`";
+
+    for (var element in node.elements) {
+      final part = element.accept(this);
+
+      if (part != null) {
+        luauInterpolatedText += part.emit();
+      }
+    }
+    luauInterpolatedText += "`";
+    return LuauLiteral(value: luauInterpolatedText);
+  }
+
+  @override
+  LuauNode? visitInterpolationExpression(InterpolationExpression node) {
+    final innerLego = node.expression.accept(this);
+
+    if (innerLego != null) {
+      return LuauLiteral(value: "{${innerLego.emit()}}");
+    }
+    return null;
+  }
+
+  @override
+  LuauNode? visitInterpolationString(InterpolationString node) {
+    return LuauLiteral(value: node.value);
+  }
 }
