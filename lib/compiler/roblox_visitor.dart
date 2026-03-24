@@ -2,7 +2,9 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:roblox_dart/luau/luau_binary_expression.dart';
 import 'package:roblox_dart/luau/luau_call_expression.dart';
+import 'package:roblox_dart/luau/luau_conditional_expression.dart';
 import 'package:roblox_dart/luau/luau_function.dart';
+import 'package:roblox_dart/luau/luau_if_statement.dart';
 import 'package:roblox_dart/luau/luau_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
 import 'package:roblox_dart/luau/luau_variable_declaration.dart';
@@ -50,13 +52,20 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   }
 
   @override
+  LuauNode? visitBooleanLiteral(BooleanLiteral node) {
+    return LuauLiteral(value: node.toSource());
+  }
+
+  @override
   LuauNode? visitBinaryExpression(BinaryExpression node) {
     final leftLego = node.leftOperand.accept(this);
     final rightLego = node.rightOperand.accept(this);
     final operator = node.operator.lexeme;
 
     if (leftLego != null && rightLego != null) {
-      String luauOperator = operator;
+      const dartOperators = {"!=": "~=", "&&": "and", "||": "or"};
+
+      String luauOperator = dartOperators[operator] ?? operator;
       if (operator == "+" &&
           (node.leftOperand is StringLiteral ||
               node.rightOperand is StringLiteral)) {
@@ -166,5 +175,64 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       initializer: valueLego,
       type: luauType,
     );
+  }
+
+  List<LuauNode> _packBody(Statement dartCode) {
+    List<LuauNode> backpack = [];
+
+    if (dartCode is Block) {
+      for (var statement in dartCode.statements) {
+        final lego = statement.accept(this);
+        if (lego != null) backpack.add(lego);
+      }
+    } else {
+      final lego = dartCode.accept(this);
+      if (lego != null) backpack.add(lego);
+    }
+    return backpack;
+  }
+
+  @override
+  LuauNode? visitIfStatement(IfStatement node) {
+    final legoCondition = node.expression.accept(this);
+
+    if (legoCondition == null) return null;
+
+    final backpackThen = _packBody(node.thenStatement);
+    List<LuauNode> backpackElse = [];
+
+    if (node.elseStatement != null) {
+      if (node.elseStatement is IfStatement) {
+        final elseIfNode = node.elseStatement!.accept(this);
+        if (elseIfNode is LuauIfStatement) {
+          elseIfNode.isElseIf = true;
+          backpackElse.add(elseIfNode);
+        }
+      } else {
+        backpackElse = _packBody(node.elseStatement!);
+      }
+    }
+
+    return LuauIfStatement(
+      condition: legoCondition,
+      thenBranch: backpackThen,
+      elseBranch: backpackElse,
+    );
+  }
+
+  @override
+  LuauNode? visitConditionalExpression(ConditionalExpression node) {
+    final legoConditional = node.condition.accept(this);
+    final legoThen = node.thenExpression.accept(this);
+    final legoElse = node.elseExpression.accept(this);
+
+    if (legoConditional != null && legoThen != null && legoElse != null) {
+      return LuauConditionalExpression(
+        condition: legoConditional,
+        thenExpression: legoThen,
+        elseExpression: legoElse,
+      );
+    }
+    return null;
   }
 }
