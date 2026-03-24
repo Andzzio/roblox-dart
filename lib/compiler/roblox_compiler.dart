@@ -16,7 +16,15 @@ class RobloxCompiler {
     );
 
     final visitor = RobloxVisitor();
-    astRoot.accept(visitor);
+
+    String finalLuauCode = "";
+
+    for (var dartNode in astRoot.declarations) {
+      final masterLego = dartNode.accept(visitor);
+      if (masterLego != null) {
+        finalLuauCode += masterLego.emit();
+      }
+    }
 
     final String fileName = file.uri.pathSegments.last;
     final String luauFileName = fileName.replaceAll(".dart", ".luau");
@@ -27,11 +35,11 @@ class RobloxCompiler {
 
     final outputFile = File(outPath);
 
-    await outputFile.writeAsString(visitor.luauOutput);
+    await outputFile.writeAsString(finalLuauCode);
 
     print("Luau code saved to $outPath");
 
     print("\n--- Luau Output ---\n");
-    print(visitor.luauOutput);
+    print(finalLuauCode);
   }
 }

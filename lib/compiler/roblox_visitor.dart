@@ -1,34 +1,42 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:roblox_dart/luau/luau_call_expression.dart';
+import 'package:roblox_dart/luau/luau_function.dart';
+import 'package:roblox_dart/luau/luau_node.dart';
 
-class RobloxVisitor extends RecursiveAstVisitor<void> {
-  String luauOutput = "";
-
+class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
-  void visitFunctionDeclaration(FunctionDeclaration node) {
+  LuauNode? visitFunctionDeclaration(FunctionDeclaration node) {
     final String functionName = node.name.lexeme;
+    final List<LuauNode> luauBody = [];
 
-    luauOutput += "local function $functionName()\n";
+    final body = node.functionExpression.body;
+    if (body is BlockFunctionBody) {
+      for (var statement in body.block.statements) {
+        final childLego = statement.accept(this);
 
-    super.visitFunctionDeclaration(node);
-
-    luauOutput += "end\n\n";
-
-    if (functionName == "main") {
-      luauOutput += "$functionName()\n\n";
+        if (childLego != null) {
+          luauBody.add(childLego);
+        }
+      }
     }
+
+    return LuauFunction(name: functionName, body: luauBody);
   }
 
   @override
-  void visitMethodInvocation(MethodInvocation node) {
+  LuauNode? visitExpressionStatement(ExpressionStatement node) {
+    return node.expression.accept(this);
+  }
+
+  @override
+  LuauNode? visitMethodInvocation(MethodInvocation node) {
     final String methodName = node.methodName.name;
 
     final String methodArgs = node.argumentList.arguments
         .map((arg) => arg.toSource())
         .join(", ");
 
-    luauOutput += "\t$methodName($methodArgs)\n\n";
-
-    super.visitMethodInvocation(node);
+    return LuauCallExpression(methodName: methodName, arguments: methodArgs);
   }
 }
