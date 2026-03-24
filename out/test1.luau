@@ -6,6 +6,8 @@ local function main()
 
 	print(5 + 2)
 
+	print("Hola " .. "Roblox")
+
 end
 
 main()

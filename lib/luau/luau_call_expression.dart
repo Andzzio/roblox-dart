@@ -2,12 +2,13 @@ import 'package:roblox_dart/luau/luau_node.dart';
 
 class LuauCallExpression extends LuauNode {
   final String methodName;
-  final String arguments;
+  final List<LuauNode> arguments;
 
   LuauCallExpression({required this.methodName, required this.arguments});
 
   @override
   String emit() {
-    return "\t$methodName($arguments)\n\n";
+    final String argsText = arguments.map((arg) => arg.emit()).join(", ");
+    return "\t$methodName($argsText)\n\n";
   }
 }
