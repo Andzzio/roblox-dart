@@ -78,4 +78,16 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
     return LuauCallExpression(methodName: methodName, arguments: methodArgs);
   }
+
+  @override
+  LuauNode? visitParenthesizedExpression(ParenthesizedExpression node) {
+    final innerLego = node.expression.accept(this);
+
+    if (innerLego != null) {
+      final String value = "(${innerLego.emit()})";
+      return LuauLiteral(value: value);
+    }
+
+    return null;
+  }
 }
