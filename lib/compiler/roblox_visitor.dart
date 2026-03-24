@@ -5,6 +5,7 @@ import 'package:roblox_dart/luau/luau_binary_expression.dart';
 import 'package:roblox_dart/luau/luau_call_expression.dart';
 import 'package:roblox_dart/luau/luau_conditional_expression.dart';
 import 'package:roblox_dart/luau/luau_expression_statement.dart';
+import 'package:roblox_dart/luau/luau_for_statement.dart';
 import 'package:roblox_dart/luau/luau_function.dart';
 import 'package:roblox_dart/luau/luau_if_statement.dart';
 import 'package:roblox_dart/luau/luau_literal.dart';
@@ -139,6 +140,29 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
         operator: node.operator.lexeme,
         right: rightLego,
       );
+    }
+    return null;
+  }
+
+  @override
+  LuauNode? visitPostfixExpression(PostfixExpression node) {
+    final varLego = node.operand.accept(this);
+    if (varLego != null) {
+      final symbol = node.operator.lexeme;
+
+      if (symbol == "++") {
+        return LuauAssignmentExpression(
+          left: varLego,
+          operator: "+=",
+          right: LuauLiteral(value: "1"),
+        );
+      } else if (symbol == "--") {
+        return LuauAssignmentExpression(
+          left: varLego,
+          operator: "-=",
+          right: LuauLiteral(value: "1"),
+        );
+      }
     }
     return null;
   }
@@ -313,5 +337,32 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     final backpackBody = _packBody(node.body);
 
     return LuauWhileStatement(condition: legoCondition, body: backpackBody);
+  }
+
+  @override
+  LuauNode? visitForStatement(ForStatement node) {
+    if (node.forLoopParts is! ForPartsWithDeclarations) return null;
+
+    final forParts = node.forLoopParts as ForPartsWithDeclarations;
+
+    final legoInit = forParts.variables.accept(this);
+
+    final legoCond = forParts.condition?.accept(this);
+
+    final List<LuauNode> legoUpdaters = [];
+
+    for (var updater in forParts.updaters) {
+      final lego = updater.accept(this);
+      if (lego != null) legoUpdaters.add(lego);
+    }
+
+    final backpackBody = _packBody(node.body);
+
+    return LuauForStatement(
+      initializer: legoInit,
+      condition: legoCond,
+      updaters: legoUpdaters,
+      body: backpackBody,
+    );
   }
 }

@@ -1,5 +1,13 @@
 void evenNumbers(int limit) {
-  int i = 0;
+  for (int i = 0; i <= limit; i++) {
+    if (i % 2 == 0) {
+      print(i);
+    }
+  }
+}
+
+void oddNumbers(int limit) {
+  int i = 1;
   while (i <= limit) {
     print(i);
     i += 2;
@@ -8,4 +16,5 @@ void evenNumbers(int limit) {
 
 void main() {
   evenNumbers(10);
+  oddNumbers(10);
 }
