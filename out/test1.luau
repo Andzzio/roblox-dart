@@ -8,6 +8,8 @@ local function main()
 
 	print("Hola " .. "Roblox")
 
+	print(5 + 2 * (6 / 2))
+
 end
 
 main()
