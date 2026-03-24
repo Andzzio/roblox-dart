@@ -3,16 +3,42 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:roblox_dart/luau/luau_binary_expression.dart';
 import 'package:roblox_dart/luau/luau_call_expression.dart';
 import 'package:roblox_dart/luau/luau_conditional_expression.dart';
+import 'package:roblox_dart/luau/luau_expression_statement.dart';
 import 'package:roblox_dart/luau/luau_function.dart';
 import 'package:roblox_dart/luau/luau_if_statement.dart';
 import 'package:roblox_dart/luau/luau_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
+import 'package:roblox_dart/luau/luau_parameter.dart';
+import 'package:roblox_dart/luau/luau_return_statement.dart';
 import 'package:roblox_dart/luau/luau_variable_declaration.dart';
 
 class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
   LuauNode? visitFunctionDeclaration(FunctionDeclaration node) {
     final String functionName = node.name.lexeme;
+    String? returnTypeLuau;
+
+    if (node.returnType != null) {
+      final dartType = node.returnType!.toSource();
+      returnTypeLuau = _translateType(dartType);
+    }
+
+    List<LuauParameter> fnParams = [];
+    final paramList = node.functionExpression.parameters?.parameters;
+
+    if (paramList != null) {
+      for (var param in paramList) {
+        final paramName = param.name?.lexeme ?? "";
+        String? luauType;
+
+        if (param is SimpleFormalParameter && param.type != null) {
+          final dartType = param.type!.toSource();
+          luauType = _translateType(dartType);
+        }
+        fnParams.add(LuauParameter(name: paramName, type: luauType));
+      }
+    }
+
     final List<LuauNode> luauBody = [];
 
     final body = node.functionExpression.body;
@@ -26,12 +52,32 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       }
     }
 
-    return LuauFunction(name: functionName, body: luauBody);
+    return LuauFunction(
+      name: functionName,
+      body: luauBody,
+      parameters: fnParams,
+      returnType: returnTypeLuau,
+    );
+  }
+
+  @override
+  LuauNode? visitReturnStatement(ReturnStatement node) {
+    LuauNode? legoValue;
+
+    if (node.expression != null) {
+      legoValue = node.expression!.accept(this);
+    }
+
+    return LuauReturnStatement(expression: legoValue);
   }
 
   @override
   LuauNode? visitExpressionStatement(ExpressionStatement node) {
-    return node.expression.accept(this);
+    final lego = node.expression.accept(this);
+    if (lego != null) {
+      return LuauExpressionStatement(expression: lego);
+    }
+    return null;
   }
 
   @override
@@ -154,14 +200,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     if (node.type != null) {
       final dartType = node.type!.toSource();
 
-      const tipados = {
-        "int": "number",
-        "double": "number",
-        "String": "string",
-        "bool": "boolean",
-      };
-
-      luauType = tipados[dartType] ?? "any";
+      luauType = _translateType(dartType);
     }
 
     LuauNode? valueLego;
@@ -234,5 +273,17 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       );
     }
     return null;
+  }
+
+  String? _translateType(String? dartType) {
+    if (dartType == null || dartType == "void") return null;
+    const types = {
+      "int": "number",
+      "double": "number",
+      "String": "string",
+      "bool": "boolean",
+    };
+
+    return types[dartType] ?? "any";
   }
 }

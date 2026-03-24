@@ -11,6 +11,6 @@ class LuauCallExpression extends LuauNode {
     final String tabs = "\t" * indent;
 
     final String argsText = arguments.map((arg) => arg.emit()).join(", ");
-    return "$tabs$methodName($argsText)\n\n";
+    return "$tabs$methodName($argsText)";
   }
 }
