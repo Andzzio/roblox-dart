@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:roblox_dart/luau/luau_assignment_expression.dart';
 import 'package:roblox_dart/luau/luau_binary_expression.dart';
 import 'package:roblox_dart/luau/luau_call_expression.dart';
 import 'package:roblox_dart/luau/luau_conditional_expression.dart';
@@ -11,6 +12,7 @@ import 'package:roblox_dart/luau/luau_node.dart';
 import 'package:roblox_dart/luau/luau_parameter.dart';
 import 'package:roblox_dart/luau/luau_return_statement.dart';
 import 'package:roblox_dart/luau/luau_variable_declaration.dart';
+import 'package:roblox_dart/luau/luau_while_statement.dart';
 
 class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
@@ -120,6 +122,21 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       return LuauBinaryExpression(
         left: leftLego,
         operator: luauOperator,
+        right: rightLego,
+      );
+    }
+    return null;
+  }
+
+  @override
+  LuauNode? visitAssignmentExpression(AssignmentExpression node) {
+    final leftLego = node.leftHandSide.accept(this);
+    final rightLego = node.rightHandSide.accept(this);
+
+    if (leftLego != null && rightLego != null) {
+      return LuauAssignmentExpression(
+        left: leftLego,
+        operator: node.operator.lexeme,
         right: rightLego,
       );
     }
@@ -285,5 +302,16 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     };
 
     return types[dartType] ?? "any";
+  }
+
+  @override
+  LuauNode? visitWhileStatement(WhileStatement node) {
+    final legoCondition = node.condition.accept(this);
+
+    if (legoCondition == null) return null;
+
+    final backpackBody = _packBody(node.body);
+
+    return LuauWhileStatement(condition: legoCondition, body: backpackBody);
   }
 }

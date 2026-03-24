@@ -1,0 +1,18 @@
+import 'package:roblox_dart/luau/luau_node.dart';
+
+class LuauAssignmentExpression extends LuauNode {
+  final LuauNode left;
+  final String operator;
+  final LuauNode right;
+
+  LuauAssignmentExpression({
+    required this.left,
+    required this.operator,
+    required this.right,
+  });
+
+  @override
+  String emit({int indent = 0}) {
+    return "${left.emit()} $operator ${right.emit()}";
+  }
+}
