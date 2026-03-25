@@ -134,6 +134,21 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   }
 
   @override
+  LuauNode? visitIsExpression(IsExpression node) {
+    final legoExpr = node.expression.accept(this);
+    if (legoExpr != null) {
+      final dartType = node.type.toSource();
+      final luauType = _translateType(dartType) ?? "any";
+      final operator = node.notOperator == null ? "==" : "~=";
+
+      return LuauLiteral(
+        value: "typeof(${legoExpr.emit()}) $operator '$luauType'",
+      );
+    }
+    return null;
+  }
+
+  @override
   LuauNode? visitReturnStatement(ReturnStatement node) {
     LuauNode? legoValue;
 
