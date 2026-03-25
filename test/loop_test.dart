@@ -14,7 +14,26 @@ void oddNumbers(int limit) {
   }
 }
 
+void multiplesOf3(int limit) {
+  int i = 1;
+  do {
+    if (i % 3 == 0) {
+      print(i);
+    }
+    i++;
+  } while (i <= limit);
+}
+
+void listTest() {
+  List<int> numbers = [1, 2, 3, 4, 5];
+  for (int number in numbers) {
+    print(number);
+  }
+}
+
 void main() {
   evenNumbers(10);
   oddNumbers(10);
+  multiplesOf3(10);
+  listTest();
 }

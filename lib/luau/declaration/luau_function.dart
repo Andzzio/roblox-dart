@@ -1,5 +1,5 @@
 import 'package:roblox_dart/luau/luau_node.dart';
-import 'package:roblox_dart/luau/luau_parameter.dart';
+import 'package:roblox_dart/luau/declaration/luau_parameter.dart';
 
 class LuauFunction extends LuauNode {
   final String name;

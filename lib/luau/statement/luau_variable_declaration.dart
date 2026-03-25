@@ -14,7 +14,7 @@ class LuauVariableDeclaration extends LuauNode {
     final String typeStr = type != null ? ": $type" : "";
 
     if (initializer != null) {
-      return "${tabs}local $name$typeStr = ${initializer!.emit()}\n\n";
+      return "${tabs}local $name$typeStr = ${initializer!.emit(indent: indent)}\n\n";
     } else {
       return "${tabs}local $name$typeStr\n\n";
     }

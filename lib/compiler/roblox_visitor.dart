@@ -1,21 +1,24 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:roblox_dart/luau/luau_assignment_expression.dart';
-import 'package:roblox_dart/luau/luau_binary_expression.dart';
-import 'package:roblox_dart/luau/luau_call_expression.dart';
-import 'package:roblox_dart/luau/luau_conditional_expression.dart';
-import 'package:roblox_dart/luau/luau_do_statement.dart';
-import 'package:roblox_dart/luau/luau_expression_statement.dart';
-import 'package:roblox_dart/luau/luau_for_in_statement.dart';
-import 'package:roblox_dart/luau/luau_for_statement.dart';
-import 'package:roblox_dart/luau/luau_function.dart';
-import 'package:roblox_dart/luau/luau_if_statement.dart';
-import 'package:roblox_dart/luau/luau_literal.dart';
+import 'package:roblox_dart/luau/expression/luau_assignment_expression.dart';
+import 'package:roblox_dart/luau/expression/luau_binary_expression.dart';
+import 'package:roblox_dart/luau/expression/luau_call_expression.dart';
+import 'package:roblox_dart/luau/expression/luau_conditional_expression.dart';
+import 'package:roblox_dart/luau/expression/luau_index_expression.dart';
+import 'package:roblox_dart/luau/expression/luau_list_literal.dart';
+import 'package:roblox_dart/luau/expression/luau_map_literal.dart';
+import 'package:roblox_dart/luau/statement/luau_do_statement.dart';
+import 'package:roblox_dart/luau/statement/luau_expression_statement.dart';
+import 'package:roblox_dart/luau/statement/luau_for_in_statement.dart';
+import 'package:roblox_dart/luau/statement/luau_for_statement.dart';
+import 'package:roblox_dart/luau/declaration/luau_function.dart';
+import 'package:roblox_dart/luau/statement/luau_if_statement.dart';
+import 'package:roblox_dart/luau/expression/luau_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
-import 'package:roblox_dart/luau/luau_parameter.dart';
-import 'package:roblox_dart/luau/luau_return_statement.dart';
-import 'package:roblox_dart/luau/luau_variable_declaration.dart';
-import 'package:roblox_dart/luau/luau_while_statement.dart';
+import 'package:roblox_dart/luau/declaration/luau_parameter.dart';
+import 'package:roblox_dart/luau/statement/luau_return_statement.dart';
+import 'package:roblox_dart/luau/statement/luau_variable_declaration.dart';
+import 'package:roblox_dart/luau/statement/luau_while_statement.dart';
 
 class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
@@ -387,5 +390,45 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     final backpackBody = _packBody(node.body);
 
     return LuauDoStatement(body: backpackBody, condition: legoCondition);
+  }
+
+  @override
+  LuauNode? visitListLiteral(ListLiteral node) {
+    final List<LuauNode> legoElements = [];
+
+    for (var element in node.elements) {
+      final lego = element.accept(this);
+      if (lego != null) legoElements.add(lego);
+    }
+
+    return LuauListLiteral(elements: legoElements);
+  }
+
+  @override
+  LuauNode? visitSetOrMapLiteral(SetOrMapLiteral node) {
+    final Map<LuauNode, LuauNode> legoEntries = {};
+
+    for (var element in node.elements) {
+      if (element is MapLiteralEntry) {
+        final key = element.key.accept(this);
+        final value = element.value.accept(this);
+        if (key != null && value != null) {
+          legoEntries[key] = value;
+        }
+      }
+    }
+
+    return LuauMapLiteral(entries: legoEntries);
+  }
+
+  @override
+  LuauNode? visitIndexExpression(IndexExpression node) {
+    final legoTarget = node.target?.accept(this);
+    final legoIndex = node.index.accept(this);
+
+    if (legoTarget != null && legoIndex != null) {
+      return LuauIndexExpression(target: legoTarget, index: legoIndex);
+    }
+    return null;
   }
 }
