@@ -32,6 +32,9 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     }
 
     List<LuauParameter> fnParams = [];
+    List<LuauNode> namedUnpackers = [];
+    bool hasNamedParams = false;
+
     final paramList = node.functionExpression.parameters?.parameters;
 
     if (paramList != null) {
@@ -42,12 +45,57 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
         if (param is SimpleFormalParameter && param.type != null) {
           final dartType = param.type!.toSource();
           luauType = _translateType(dartType);
+        } else if (param is DefaultFormalParameter &&
+            param.parameter is SimpleFormalParameter) {
+          final simpleParam = param.parameter as SimpleFormalParameter;
+          if (simpleParam.type != null) {
+            luauType = _translateType(simpleParam.type!.toSource());
+          }
         }
-        fnParams.add(LuauParameter(name: paramName, type: luauType));
+
+        final typeString = luauType != null ? ": $luauType" : "";
+
+        if (param is DefaultFormalParameter && param.defaultValue != null) {
+          final defaultLego = param.defaultValue!.accept(this);
+
+          if (defaultLego != null) {
+            if (param.isNamed) {
+              hasNamedParams = true;
+              final extraction = LuauLiteral(
+                value:
+                    "local $paramName$typeString = if namedArgs and namedArgs.$paramName ~= nil then namedArgs.$paramName else ${defaultLego.emit()}",
+              );
+              namedUnpackers.add(
+                LuauExpressionStatement(expression: extraction),
+              );
+            } else {
+              fnParams.add(LuauParameter(name: paramName, type: luauType));
+              final fallback = LuauLiteral(
+                value:
+                    "if $paramName == nil then\n\t\t$paramName = ${defaultLego.emit()}\n\tend",
+              );
+              namedUnpackers.add(LuauExpressionStatement(expression: fallback));
+            }
+          }
+        } else if (param.isNamed) {
+          hasNamedParams = true;
+          final extraction = LuauLiteral(
+            value: "local $paramName$typeString = namedArgs[\"$paramName\"]",
+          );
+          namedUnpackers.add(LuauExpressionStatement(expression: extraction));
+        } else {
+          fnParams.add(LuauParameter(name: paramName, type: luauType));
+        }
       }
     }
 
+    if (hasNamedParams) {
+      fnParams.add(LuauParameter(name: "namedArgs", type: "any"));
+    }
+
     final List<LuauNode> luauBody = [];
+
+    luauBody.addAll(namedUnpackers);
 
     final body = node.functionExpression.body;
     if (body is BlockFunctionBody) {
@@ -131,7 +179,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       final isRightString =
           node.rightOperand.staticType?.isDartCoreString ?? false;
 
-      if (operator == "+" && (isLeftString && isRightString)) {
+      if (operator == "+" && (isLeftString || isRightString)) {
         luauOperator = "..";
       }
       return LuauBinaryExpression(
@@ -187,16 +235,33 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   LuauNode? visitMethodInvocation(MethodInvocation node) {
     final String methodName = node.methodName.name;
 
-    final List<LuauNode> methodArgs = [];
+    final List<LuauNode> positionalArgs = [];
+    final Map<LuauNode, LuauNode> namedArgs = {};
 
     for (var arg in node.argumentList.arguments) {
-      final argLego = arg.accept(this);
-      if (argLego != null) {
-        methodArgs.add(argLego);
+      if (arg is NamedExpression) {
+        final keyName = arg.name.label.name;
+        final keyLego = LuauLiteral(value: '"$keyName"');
+        final valueLego = arg.expression.accept(this);
+
+        if (valueLego != null) {
+          namedArgs[keyLego] = valueLego;
+        }
+      } else {
+        final argLego = arg.accept(this);
+        if (argLego != null) {
+          positionalArgs.add(argLego);
+        }
       }
     }
 
-    return LuauCallExpression(methodName: methodName, arguments: methodArgs);
+    final List<LuauNode> finalLuauArgs = List.from(positionalArgs);
+
+    if (namedArgs.isNotEmpty) {
+      finalLuauArgs.add(LuauMapLiteral(entries: namedArgs));
+    }
+
+    return LuauCallExpression(methodName: methodName, arguments: finalLuauArgs);
   }
 
   @override
