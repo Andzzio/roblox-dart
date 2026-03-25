@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:roblox_dart/luau/declaration/luau_anonymous_function.dart';
 import 'package:roblox_dart/luau/expression/luau_assignment_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_binary_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_call_expression.dart';
@@ -119,6 +120,71 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       parameters: fnParams,
       returnType: returnTypeLuau,
     );
+  }
+
+  @override
+  LuauNode? visitFunctionExpression(FunctionExpression node) {
+    if (node.parent is FunctionDeclaration) return null;
+
+    List<LuauParameter> fnParams = [];
+
+    final paramList = node.parameters?.parameters;
+
+    if (paramList != null) {
+      for (var param in paramList) {
+        final paramName = param.name?.lexeme ?? "";
+        String? luauType;
+
+        if (param is SimpleFormalParameter && param.type != null) {
+          luauType = _translateType(param.type!.toSource());
+        }
+
+        fnParams.add(LuauParameter(name: paramName, type: luauType));
+      }
+    }
+    final List<LuauNode> luauBody = [];
+    final body = node.body;
+
+    if (body is BlockFunctionBody) {
+      for (var statement in body.block.statements) {
+        final childLego = statement.accept(this);
+
+        if (childLego != null) luauBody.add(childLego);
+      }
+    } else if (body is ExpressionFunctionBody) {
+      final legoValue = body.expression.accept(this);
+      if (legoValue != null) {
+        luauBody.add(LuauReturnStatement(expression: legoValue));
+      }
+    }
+
+    return LuauAnonymousFunction(parameters: fnParams, body: luauBody);
+  }
+
+  @override
+  LuauNode? visitCascadeExpression(CascadeExpression node) {
+    final targetLego = node.target.accept(this);
+    if (targetLego == null) return null;
+
+    String innerCode = "local _c = ${targetLego.emit()}\n";
+
+    for (var section in node.cascadeSections) {
+      String source = section.toSource().trim();
+      String sectionCode;
+
+      if (source.startsWith("?..")) {
+        sectionCode = "_c.${source.substring(3)}";
+      } else if (source.startsWith("..")) {
+        sectionCode = "_c.${source.substring(2)}";
+      } else {
+        sectionCode = source;
+      }
+
+      innerCode += "\t\t$sectionCode\n";
+    }
+    innerCode += "\t\treturn _c";
+
+    return LuauLiteral(value: "(function()\n\t\t$innerCode\nend)()");
   }
 
   @override
