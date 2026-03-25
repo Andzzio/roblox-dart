@@ -41,7 +41,10 @@ class TranslateCommand extends Command {
       return;
     }
 
-    await RobloxCompiler().compileFile(file);
+    final String projectRoot = Directory.current.path;
+    final compiler = RobloxCompiler(projectRoot: projectRoot);
+
+    await compiler.compileFile(file);
 
     print("Translated!");
   }

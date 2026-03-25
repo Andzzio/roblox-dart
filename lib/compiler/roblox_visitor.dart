@@ -120,9 +120,13 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       const dartOperators = {"!=": "~=", "&&": "and", "||": "or"};
 
       String luauOperator = dartOperators[operator] ?? operator;
-      if (operator == "+" &&
-          (node.leftOperand is StringLiteral ||
-              node.rightOperand is StringLiteral)) {
+
+      final isLeftString =
+          node.leftOperand.staticType?.isDartCoreString ?? false;
+      final isRightString =
+          node.rightOperand.staticType?.isDartCoreString ?? false;
+
+      if (operator == "+" && (isLeftString && isRightString)) {
         luauOperator = "..";
       }
       return LuauBinaryExpression(

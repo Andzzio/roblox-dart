@@ -30,10 +30,6 @@ class LuauFunction extends LuauNode {
 
     output += "${tabs}end\n\n";
 
-    if (name == "main") {
-      output += "$tabs$name()\n\n";
-    }
-
     return output;
   }
 }

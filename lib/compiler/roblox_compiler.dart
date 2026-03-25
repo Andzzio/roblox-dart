@@ -1,13 +1,31 @@
 import 'dart:io';
-import 'package:analyzer/dart/analysis/utilities.dart';
+import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
+import 'package:analyzer/dart/analysis/results.dart';
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:roblox_dart/compiler/roblox_visitor.dart';
+import 'package:path/path.dart' as p;
 
 class RobloxCompiler {
-  Future<void> compileFile(File file) async {
-    final String fileContent = await file.readAsString();
-    print("Analazing source code...");
+  final AnalysisContextCollection collection;
 
-    final parseResult = parseString(content: fileContent);
+  RobloxCompiler({required String projectRoot})
+    : collection = AnalysisContextCollection(
+        includedPaths: [p.normalize(p.absolute(projectRoot))],
+      );
+
+  Future<void> compileFile(File file) async {
+    print("Analyzing source code...");
+
+    final normalizedPath = p.normalize(file.absolute.path);
+    final context = collection.contextFor(normalizedPath);
+
+    final session = context.currentSession;
+    final parseResult = await session.getResolvedUnit(normalizedPath);
+
+    if (parseResult is! ResolvedUnitResult) {
+      print("Error: Could not resolve file.");
+      return;
+    }
 
     final astRoot = parseResult.unit;
 
@@ -18,12 +36,21 @@ class RobloxCompiler {
     final visitor = RobloxVisitor();
 
     String finalLuauCode = "";
+    bool hasMain = false;
 
     for (var dartNode in astRoot.declarations) {
+      if (dartNode is FunctionDeclaration && dartNode.name.lexeme == "main") {
+        hasMain = true;
+      }
+
       final masterLego = dartNode.accept(visitor);
       if (masterLego != null) {
         finalLuauCode += masterLego.emit();
       }
+    }
+
+    if (hasMain) {
+      finalLuauCode += "main()\n";
     }
 
     final String fileName = file.uri.pathSegments.last;
