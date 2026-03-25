@@ -130,16 +130,12 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     final legoFunction = node.function.accept(this);
     if (legoFunction == null) return null;
 
-    final List<LuauNode> args = [];
+    final finalLuauArgs = _processArguments(node.argumentList);
 
-    for (var arg in node.argumentList.arguments) {
-      final argLego = arg.accept(this);
-      if (argLego != null) {
-        args.add(argLego);
-      }
-    }
-
-    return LuauFunctionInvocation(function: legoFunction, arguments: args);
+    return LuauFunctionInvocation(
+      function: legoFunction,
+      arguments: finalLuauArgs,
+    );
   }
 
   @override
@@ -353,31 +349,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   LuauNode? visitMethodInvocation(MethodInvocation node) {
     final String methodName = node.methodName.name;
 
-    final List<LuauNode> positionalArgs = [];
-    final Map<LuauNode, LuauNode> namedArgs = {};
-
-    for (var arg in node.argumentList.arguments) {
-      if (arg is NamedExpression) {
-        final keyName = arg.name.label.name;
-        final keyLego = LuauLiteral(value: '"$keyName"');
-        final valueLego = arg.expression.accept(this);
-
-        if (valueLego != null) {
-          namedArgs[keyLego] = valueLego;
-        }
-      } else {
-        final argLego = arg.accept(this);
-        if (argLego != null) {
-          positionalArgs.add(argLego);
-        }
-      }
-    }
-
-    final List<LuauNode> finalLuauArgs = List.from(positionalArgs);
-
-    if (namedArgs.isNotEmpty) {
-      finalLuauArgs.add(LuauMapLiteral(entries: namedArgs));
-    }
+    final List<LuauNode> finalLuauArgs = _processArguments(node.argumentList);
 
     return LuauCallExpression(methodName: methodName, arguments: finalLuauArgs);
   }
@@ -646,5 +618,35 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     String luauType = types[cleanType] ?? "any";
 
     return isNullable ? "$luauType?" : luauType;
+  }
+
+  List<LuauNode> _processArguments(ArgumentList argumentList) {
+    final List<LuauNode> positionalArgs = [];
+    final Map<LuauNode, LuauNode> namedArgs = {};
+
+    for (var arg in argumentList.arguments) {
+      if (arg is NamedExpression) {
+        final keyName = arg.name.label.name;
+        final keyLego = LuauLiteral(value: '"$keyName"');
+        final valueLego = arg.expression.accept(this);
+
+        if (valueLego != null) {
+          namedArgs[keyLego] = valueLego;
+        }
+      } else {
+        final argLego = arg.accept(this);
+        if (argLego != null) {
+          positionalArgs.add(argLego);
+        }
+      }
+    }
+
+    final List<LuauNode> finalLuauArgs = List.from(positionalArgs);
+
+    if (namedArgs.isNotEmpty) {
+      finalLuauArgs.add(LuauMapLiteral(entries: namedArgs));
+    }
+
+    return finalLuauArgs;
   }
 }
