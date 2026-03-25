@@ -4,7 +4,9 @@ import 'package:roblox_dart/luau/luau_assignment_expression.dart';
 import 'package:roblox_dart/luau/luau_binary_expression.dart';
 import 'package:roblox_dart/luau/luau_call_expression.dart';
 import 'package:roblox_dart/luau/luau_conditional_expression.dart';
+import 'package:roblox_dart/luau/luau_do_statement.dart';
 import 'package:roblox_dart/luau/luau_expression_statement.dart';
+import 'package:roblox_dart/luau/luau_for_in_statement.dart';
 import 'package:roblox_dart/luau/luau_for_statement.dart';
 import 'package:roblox_dart/luau/luau_function.dart';
 import 'package:roblox_dart/luau/luau_if_statement.dart';
@@ -341,28 +343,49 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
   @override
   LuauNode? visitForStatement(ForStatement node) {
-    if (node.forLoopParts is! ForPartsWithDeclarations) return null;
+    if (node.forLoopParts is ForPartsWithDeclarations) {
+      final forParts = node.forLoopParts as ForPartsWithDeclarations;
+      final legoInit = forParts.variables.accept(this);
+      final legoCond = forParts.condition?.accept(this);
 
-    final forParts = node.forLoopParts as ForPartsWithDeclarations;
+      final List<LuauNode> legoUpdaters = [];
 
-    final legoInit = forParts.variables.accept(this);
+      for (var updater in forParts.updaters) {
+        final lego = updater.accept(this);
+        if (lego != null) legoUpdaters.add(lego);
+      }
+      final backpackBody = _packBody(node.body);
 
-    final legoCond = forParts.condition?.accept(this);
+      return LuauForStatement(
+        initializer: legoInit,
+        condition: legoCond,
+        updaters: legoUpdaters,
+        body: backpackBody,
+      );
+    } else if (node.forLoopParts is ForEachPartsWithDeclaration) {
+      final forInParts = node.forLoopParts as ForEachPartsWithDeclaration;
 
-    final List<LuauNode> legoUpdaters = [];
+      final itemName = forInParts.loopVariable.name.lexeme;
+      final legoList = forInParts.iterable.accept(this);
 
-    for (var updater in forParts.updaters) {
-      final lego = updater.accept(this);
-      if (lego != null) legoUpdaters.add(lego);
+      if (legoList != null) {
+        return LuauForInStatement(
+          itemName: itemName,
+          list: legoList,
+          body: _packBody(node.body),
+        );
+      }
     }
+    return null;
+  }
+
+  @override
+  LuauNode? visitDoStatement(DoStatement node) {
+    final legoCondition = node.condition.accept(this);
+    if (legoCondition == null) return null;
 
     final backpackBody = _packBody(node.body);
 
-    return LuauForStatement(
-      initializer: legoInit,
-      condition: legoCond,
-      updaters: legoUpdaters,
-      body: backpackBody,
-    );
+    return LuauDoStatement(body: backpackBody, condition: legoCondition);
   }
 }
