@@ -106,6 +106,11 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
           luauBody.add(childLego);
         }
       }
+    } else if (body is ExpressionFunctionBody) {
+      final legoValue = body.expression.accept(this);
+      if (legoValue != null) {
+        luauBody.add(LuauReturnStatement(expression: legoValue));
+      }
     }
 
     return LuauFunction(
