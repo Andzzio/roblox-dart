@@ -89,6 +89,11 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   }
 
   @override
+  LuauNode? visitNullLiteral(NullLiteral node) {
+    return LuauLiteral(value: "nil");
+  }
+
+  @override
   LuauNode? visitVariableDeclarationStatement(
     VariableDeclarationStatement node,
   ) {
@@ -171,6 +176,8 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
           operator: "-=",
           right: LuauLiteral(value: "1"),
         );
+      } else if (symbol == "!") {
+        return varLego;
       }
     }
     return null;
@@ -266,21 +273,6 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     );
   }
 
-  List<LuauNode> _packBody(Statement dartCode) {
-    List<LuauNode> backpack = [];
-
-    if (dartCode is Block) {
-      for (var statement in dartCode.statements) {
-        final lego = statement.accept(this);
-        if (lego != null) backpack.add(lego);
-      }
-    } else {
-      final lego = dartCode.accept(this);
-      if (lego != null) backpack.add(lego);
-    }
-    return backpack;
-  }
-
   @override
   LuauNode? visitIfStatement(IfStatement node) {
     final legoCondition = node.expression.accept(this);
@@ -323,18 +315,6 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       );
     }
     return null;
-  }
-
-  String? _translateType(String? dartType) {
-    if (dartType == null || dartType == "void") return null;
-    const types = {
-      "int": "number",
-      "double": "number",
-      "String": "string",
-      "bool": "boolean",
-    };
-
-    return types[dartType] ?? "any";
   }
 
   @override
@@ -434,5 +414,54 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       return LuauIndexExpression(target: legoTarget, index: legoIndex);
     }
     return null;
+  }
+
+  @override
+  LuauNode? visitPrefixExpression(PrefixExpression node) {
+    final operand = node.operand.accept(this);
+    if (operand != null) {
+      final operator = node.operator.lexeme;
+      if (operator == "!") {
+        return LuauLiteral(value: "not ${operand.emit()}");
+      } else if (operator == "-") {
+        return LuauLiteral(value: "-${operand.emit()}");
+      }
+    }
+    return null;
+  }
+
+  List<LuauNode> _packBody(Statement dartCode) {
+    List<LuauNode> backpack = [];
+
+    if (dartCode is Block) {
+      for (var statement in dartCode.statements) {
+        final lego = statement.accept(this);
+        if (lego != null) backpack.add(lego);
+      }
+    } else {
+      final lego = dartCode.accept(this);
+      if (lego != null) backpack.add(lego);
+    }
+    return backpack;
+  }
+
+  String? _translateType(String? dartType) {
+    if (dartType == null || dartType == "void") return null;
+
+    bool isNullable = dartType.endsWith("?");
+    String cleanType = isNullable
+        ? dartType.substring(0, dartType.length - 1)
+        : dartType;
+
+    const types = {
+      "int": "number",
+      "double": "number",
+      "String": "string",
+      "bool": "boolean",
+    };
+
+    String luauType = types[cleanType] ?? "any";
+
+    return isNullable ? "$luauType?" : luauType;
   }
 }
