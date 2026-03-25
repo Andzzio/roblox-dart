@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:roblox_dart/luau/declaration/luau_anonymous_function.dart';
 import 'package:roblox_dart/luau/expression/luau_assignment_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_binary_expression.dart';
@@ -348,10 +349,56 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
   LuauNode? visitMethodInvocation(MethodInvocation node) {
     final String methodName = node.methodName.name;
-
     final List<LuauNode> finalLuauArgs = _processArguments(node.argumentList);
 
-    return LuauCallExpression(methodName: methodName, arguments: finalLuauArgs);
+    LuauNode? targetLego;
+    bool isColon = false;
+
+    if (node.target != null) {
+      targetLego = node.target!.accept(this);
+
+      final targetExpression = node.target!;
+      bool isStaticClassAccess = false;
+
+      if (targetExpression is Identifier) {
+        final element = targetExpression.element;
+
+        if (element is ClassElement ||
+            element is ExtensionElement ||
+            element is PrefixElement) {
+          isStaticClassAccess = true;
+        }
+      }
+
+      final String targetName = targetExpression.toSource();
+
+      const robloxNamespaces = {
+        "math",
+        "table",
+        "string",
+        "coroutine",
+        "task",
+        "Vector3",
+        "Vector2",
+        "CFrame",
+        "Color3",
+        "UDim2",
+        "Instance",
+      };
+
+      if (isStaticClassAccess || robloxNamespaces.contains(targetName)) {
+        isColon = false;
+      } else {
+        isColon = true;
+      }
+    }
+
+    return LuauCallExpression(
+      methodName: methodName,
+      arguments: finalLuauArgs,
+      target: targetLego,
+      useColon: isColon,
+    );
   }
 
   @override

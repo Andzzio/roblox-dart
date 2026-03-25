@@ -1,16 +1,27 @@
 import 'package:roblox_dart/luau/luau_node.dart';
 
 class LuauCallExpression extends LuauNode {
+  final LuauNode? target;
   final String methodName;
   final List<LuauNode> arguments;
+  final bool useColon;
 
-  LuauCallExpression({required this.methodName, required this.arguments});
+  LuauCallExpression({
+    required this.methodName,
+    required this.arguments,
+    this.target,
+    this.useColon = false,
+  });
 
   @override
   String emit({int indent = 0}) {
-    final String tabs = "\t" * indent;
-
     final String argsText = arguments.map((arg) => arg.emit()).join(", ");
-    return "$tabs$methodName($argsText)";
+
+    if (target != null) {
+      final operator = useColon ? ":" : ".";
+      return "${target!.emit()}$operator$methodName($argsText)";
+    }
+
+    return "$methodName($argsText)";
   }
 }
