@@ -1,6 +1,9 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
+import 'package:roblox_dart/compiler/macros/list_macros.dart';
+import 'package:roblox_dart/compiler/macros/string_macros.dart';
+import 'package:roblox_dart/compiler/macros/type_macros.dart';
 import 'package:roblox_dart/luau/declaration/luau_anonymous_function.dart';
 import 'package:roblox_dart/luau/expression/luau_assignment_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_binary_expression.dart';
@@ -20,6 +23,7 @@ import 'package:roblox_dart/luau/expression/luau_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
 import 'package:roblox_dart/luau/declaration/luau_parameter.dart';
 import 'package:roblox_dart/luau/statement/luau_return_statement.dart';
+import 'package:roblox_dart/luau/statement/luau_try_catch.dart';
 import 'package:roblox_dart/luau/statement/luau_variable_declaration.dart';
 import 'package:roblox_dart/luau/statement/luau_while_statement.dart';
 
@@ -186,18 +190,17 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     String innerCode = "local _c = ${targetLego.emit()}\n";
 
     for (var section in node.cascadeSections) {
-      String source = section.toSource().trim();
-      String sectionCode;
-
-      if (source.startsWith("?..")) {
-        sectionCode = "if _c ~= nil then _c.${source.substring(3)} end";
-      } else if (source.startsWith("..")) {
-        sectionCode = "_c.${source.substring(2)}";
+      final sectionLego = section.accept(this);
+      if (sectionLego != null) {
+        innerCode += "\t\t_c.${sectionLego.emit()}\n";
       } else {
-        sectionCode = source;
+        String source = section.toSource().trim();
+        if (source.startsWith("?..")) {
+          innerCode += "\t\tif _c ~= nil then _c.${source.substring(3)} end\n";
+        } else if (source.startsWith("..")) {
+          innerCode += "\t\t_c.${source.substring(2)}\n";
+        }
       }
-
-      innerCode += "\t\t$sectionCode\n";
     }
     innerCode += "\t\treturn _c";
 
@@ -297,6 +300,24 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       if (operator == "+" && (isLeftString || isRightString)) {
         luauOperator = "..";
       }
+
+      if (operator == "??") {
+        final leftStr = leftLego.emit();
+
+        final isSimple = RegExp(r'^[a-zA-Z_][a-zA-Z0-9_.]*$').hasMatch(leftStr);
+
+        if (isSimple) {
+          return LuauLiteral(
+            value:
+                "(if $leftStr ~= nil then $leftStr else ${rightLego.emit()})",
+          );
+        } else {
+          return LuauLiteral(
+            value:
+                "(function() local _v = $leftStr; if _v ~= nil then return _v else return ${rightLego.emit()} end end)()",
+          );
+        }
+      }
       return LuauBinaryExpression(
         left: leftLego,
         operator: luauOperator,
@@ -361,23 +382,32 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       bool isStaticClassAccess = false;
 
       final isList = targetExpression.staticType?.isDartCoreList ?? false;
+      final isString = targetExpression.staticType?.isDartCoreString ?? false;
+      final String targetName = targetExpression.toSource();
 
+      final args = finalLuauArgs.map((a) => a.emit()).toList();
+
+      // macros
       if (isList) {
-        if (methodName == "add") {
-          return LuauLiteral(
-            value:
-                "table.insert(${targetLego!.emit()}, ${finalLuauArgs.first.emit()})",
-          );
-        } else if (methodName == 'removeAt') {
-          return LuauLiteral(
-            value:
-                "table.remove(${targetLego!.emit()}, ${finalLuauArgs.first.emit()} + 1)",
-          );
-        } else if (methodName == 'clear') {
-          return LuauLiteral(value: "table.clear(${targetLego!.emit()})");
-        }
+        final result = ListMacros.resolve(methodName, targetLego!.emit(), args);
+        if (result != null) return LuauLiteral(value: result);
       }
 
+      if (isString) {
+        final result = StringMacros.resolve(
+          methodName,
+          targetLego!.emit(),
+          args,
+        );
+        if (result != null) return LuauLiteral(value: result);
+      }
+
+      if (targetName == "int" || targetName == "double") {
+        final result = TypeMacros.resolve(methodName, targetLego!.emit(), args);
+        if (result != null) return LuauLiteral(value: result);
+      }
+
+      // colon vs dot
       if (targetExpression is Identifier) {
         final element = targetExpression.element;
 
@@ -387,8 +417,6 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
           isStaticClassAccess = true;
         }
       }
-
-      final String targetName = targetExpression.toSource();
 
       const robloxNamespaces = {
         "math",
@@ -417,6 +445,88 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       target: targetLego,
       useColon: isColon,
     );
+  }
+
+  @override
+  LuauNode? visitTryStatement(TryStatement node) {
+    final List<LuauNode> tryBody = [];
+    for (var statement in node.body.statements) {
+      final lego = statement.accept(this);
+      if (lego != null) tryBody.add(lego);
+    }
+
+    List<LuauNode> catchBody = [];
+    String? errorName;
+
+    if (node.catchClauses.isNotEmpty) {
+      final clause = node.catchClauses.first;
+      errorName = clause.exceptionParameter?.name.lexeme;
+
+      for (var statement in clause.body.statements) {
+        final lego = statement.accept(this);
+        if (lego != null) catchBody.add(lego);
+      }
+    }
+
+    return LuauTryCatch(
+      tryBody: tryBody,
+      errorName: errorName,
+      catchBody: catchBody,
+    );
+  }
+
+  @override
+  LuauNode? visitSwitchStatement(SwitchStatement node) {
+    final legoCondition = node.expression.accept(this);
+    if (legoCondition == null) return null;
+
+    List<LuauNode> cases = [];
+
+    for (var member in node.members) {
+      if (member is SwitchCase) {
+        final legoCase = member.expression.accept(this);
+        if (legoCase == null) continue;
+
+        final condition = LuauBinaryExpression(
+          left: legoCondition,
+          operator: "==",
+          right: legoCase,
+        );
+
+        final List<LuauNode> body = [];
+        for (var statement in member.statements) {
+          if (statement is BreakStatement) continue;
+          final lego = statement.accept(this);
+          if (lego != null) body.add(lego);
+        }
+
+        cases.add(
+          LuauIfStatement(
+            condition: condition,
+            thenBranch: body,
+            isElseIf: cases.isNotEmpty,
+          ),
+        );
+      } else if (member is SwitchDefault) {
+        final List<LuauNode> body = [];
+        for (var statement in member.statements) {
+          if (statement is BreakStatement) continue;
+          final lego = statement.accept(this);
+          if (lego != null) body.add(lego);
+        }
+
+        if (cases.isNotEmpty && body.isNotEmpty) {
+          final lastIf = cases.last as LuauIfStatement;
+          lastIf.elseBranch.addAll(body);
+        }
+      }
+    }
+
+    if (cases.isEmpty) return null;
+
+    (cases.first as LuauIfStatement).isElseIf = false;
+
+    return cases.first;
   }
 
   @override

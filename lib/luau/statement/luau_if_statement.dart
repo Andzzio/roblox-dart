@@ -9,9 +9,9 @@ class LuauIfStatement extends LuauNode {
   LuauIfStatement({
     required this.condition,
     required this.thenBranch,
-    this.elseBranch = const [],
+    List<LuauNode>? elseBranch,
     this.isElseIf = false,
-  });
+  }) : elseBranch = elseBranch ?? [];
 
   @override
   String emit({int indent = 0}) {

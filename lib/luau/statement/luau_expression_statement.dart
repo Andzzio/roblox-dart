@@ -6,6 +6,6 @@ class LuauExpressionStatement extends LuauNode {
   @override
   String emit({int indent = 0}) {
     final String tabs = "\t" * indent;
-    return "$tabs${expression.emit()}\n\n";
+    return "$tabs${expression.emit(indent: indent)}\n\n";
   }
 }

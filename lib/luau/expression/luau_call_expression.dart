@@ -15,7 +15,9 @@ class LuauCallExpression extends LuauNode {
 
   @override
   String emit({int indent = 0}) {
-    final String argsText = arguments.map((arg) => arg.emit()).join(", ");
+    final String argsText = arguments
+        .map((arg) => arg.emit(indent: indent))
+        .join(", ");
 
     if (target != null) {
       final operator = useColon ? ":" : ".";

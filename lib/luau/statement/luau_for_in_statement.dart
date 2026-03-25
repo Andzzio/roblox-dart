@@ -20,7 +20,7 @@ class LuauForInStatement extends LuauNode {
     final String iterator = usePairs ? "pairs" : "ipairs";
 
     String output =
-        "${tabs}for _, $itemName in $iterator (${list.emit()}) do\n\n";
+        "${tabs}for _, $itemName in $iterator(${list.emit()}) do\n\n";
 
     for (var node in body) {
       output += node.emit(indent: indent + 1);

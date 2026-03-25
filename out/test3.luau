@@ -18,9 +18,9 @@ function main()
 	print(cuadrado(5))
 
 	executeOperation(10, 20, function(p0, p1)
-	return p0 + p1
+		return p0 + p1
 
-end)
+	end)
 
 end
 
