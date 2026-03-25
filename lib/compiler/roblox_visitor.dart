@@ -5,6 +5,7 @@ import 'package:roblox_dart/luau/expression/luau_assignment_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_binary_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_call_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_conditional_expression.dart';
+import 'package:roblox_dart/luau/expression/luau_function_invocation.dart';
 import 'package:roblox_dart/luau/expression/luau_index_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_list_literal.dart';
 import 'package:roblox_dart/luau/expression/luau_map_literal.dart';
@@ -120,6 +121,25 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       parameters: fnParams,
       returnType: returnTypeLuau,
     );
+  }
+
+  @override
+  LuauNode? visitFunctionExpressionInvocation(
+    FunctionExpressionInvocation node,
+  ) {
+    final legoFunction = node.function.accept(this);
+    if (legoFunction == null) return null;
+
+    final List<LuauNode> args = [];
+
+    for (var arg in node.argumentList.arguments) {
+      final argLego = arg.accept(this);
+      if (argLego != null) {
+        args.add(argLego);
+      }
+    }
+
+    return LuauFunctionInvocation(function: legoFunction, arguments: args);
   }
 
   @override

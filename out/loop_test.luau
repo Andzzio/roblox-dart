@@ -54,13 +54,35 @@ end
 
 local function listTest()
 
-	local numbers: any = {1, 2, 3, 4, 5}
+	local numbers: any = {
+		1,
+		2,
+		3,
+		4,
+		5,
+	}
 
 	for _, number in ipairs (numbers) do
 
 		print(number)
 
 	end
+
+end
+
+local function fact(namedArgs: any): number
+
+	local max: number = if namedArgs and namedArgs.max ~= nil then namedArgs.max else 10
+
+	if max == 0 then
+
+		return 1
+
+	end
+
+	return max * fact({
+	["max"] = max - 1,
+})
 
 end
 
@@ -74,7 +96,10 @@ local function main()
 
 	listTest()
 
+	print(fact({
+	["max"] = 5,
+}))
+
 end
 
 main()
-

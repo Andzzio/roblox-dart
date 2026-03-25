@@ -31,9 +31,16 @@ void listTest() {
   }
 }
 
+int fact({int max = 10}) {
+  if (max == 0) return 1;
+  return max * fact(max: max - 1);
+}
+
 void main() {
   evenNumbers(10);
   oddNumbers(10);
   multiplesOf3(10);
   listTest();
+
+  print(fact(max: 5));
 }

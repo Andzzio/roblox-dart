@@ -22,7 +22,7 @@ class LuauFunction extends LuauNode {
 
     final String retStr = returnType != null ? ": $returnType" : "";
 
-    String output = "${tabs}local function $name($paramText)$retStr\n\n";
+    String output = "${tabs}function $name($paramText)$retStr\n\n";
 
     for (var node in body) {
       output += node.emit(indent: indent + 1);
