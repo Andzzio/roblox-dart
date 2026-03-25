@@ -557,11 +557,14 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       final itemName = forInParts.loopVariable.name.lexeme;
       final legoList = forInParts.iterable.accept(this);
 
+      final isList = forInParts.iterable.staticType?.isDartCoreList ?? false;
+
       if (legoList != null) {
         return LuauForInStatement(
           itemName: itemName,
           list: legoList,
           body: _packBody(node.body),
+          usePairs: !isList,
         );
       }
     }
@@ -610,9 +613,17 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
   LuauNode? visitIndexExpression(IndexExpression node) {
     final legoTarget = node.target?.accept(this);
-    final legoIndex = node.index.accept(this);
+    LuauNode? legoIndex = node.index.accept(this);
 
     if (legoTarget != null && legoIndex != null) {
+      final isList = node.target?.staticType?.isDartCoreList ?? false;
+      if (isList) {
+        legoIndex = LuauBinaryExpression(
+          left: legoIndex,
+          operator: "+",
+          right: LuauLiteral(value: "1"),
+        );
+      }
       return LuauIndexExpression(target: legoTarget, index: legoIndex);
     }
     return null;
