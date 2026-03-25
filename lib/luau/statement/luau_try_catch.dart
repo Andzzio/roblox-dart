@@ -20,7 +20,6 @@ class LuauTryCatch extends LuauNode {
 
     String output = "";
 
-    // 1. Declarar banderas de estado para este scope
     output += "${tabs}local _hasReturned = false\n";
     output += "${tabs}local _returnValue = nil\n";
     output += "${tabs}local _hasBroken = false\n";
@@ -34,7 +33,6 @@ class LuauTryCatch extends LuauNode {
 
     output += "${tabs}end)\n\n";
 
-    // 2. Catch
     if (catchBody.isNotEmpty) {
       output += "${tabs}if not _ok then\n";
       output += "$tabs\tlocal $err = _luau_err\n";
@@ -44,7 +42,6 @@ class LuauTryCatch extends LuauNode {
       output += "${tabs}end\n\n";
     }
 
-    // 3. Finally
     if (finallyBody.isNotEmpty) {
       for (var node in finallyBody) {
         output += node.emit(indent: indent);
@@ -52,7 +49,6 @@ class LuauTryCatch extends LuauNode {
       output += "\n";
     }
 
-    // 4. Propagación de estado (Se evalúa después del try/catch/finally)
     output += "${tabs}if _hasReturned then return _returnValue end\n";
     output += "${tabs}if _hasBroken then break end\n";
     output += "${tabs}if _hasContinued then continue end\n\n";

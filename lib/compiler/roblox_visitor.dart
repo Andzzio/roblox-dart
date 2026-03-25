@@ -25,6 +25,7 @@ import 'package:roblox_dart/luau/declaration/luau_parameter.dart';
 import 'package:roblox_dart/luau/statement/luau_return_statement.dart';
 import 'package:roblox_dart/luau/statement/luau_try_catch.dart';
 import 'package:roblox_dart/luau/statement/luau_variable_declaration.dart';
+import 'package:roblox_dart/luau/statement/luau_variable_declaration_group.dart';
 import 'package:roblox_dart/luau/statement/luau_while_statement.dart';
 
 class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
@@ -225,12 +226,28 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     final legoExpr = node.expression.accept(this);
     if (legoExpr != null) {
       final dartType = node.type.toSource();
-      final luauType = _translateType(dartType) ?? "any";
-      final operator = node.notOperator == null ? "==" : "~=";
+      final luauType = _translateType(dartType) ?? dartType;
+      final isNegated = node.notOperator != null;
 
-      return LuauLiteral(
-        value: "typeof(${legoExpr.emit()}) $operator '$luauType'",
-      );
+      final operator = isNegated ? "~=" : "==";
+      final isPrimitive = ["number", "string", "boolean"].contains(luauType);
+
+      if (isPrimitive) {
+        return LuauLiteral(
+          value: "typeof(${legoExpr.emit()}) $operator '$luauType'",
+        );
+      } else {
+        final expr = legoExpr.emit();
+
+        final condition =
+            "(typeof($expr) == 'table' and getmetatable($expr) == $luauType)";
+
+        if (isNegated) {
+          return LuauLiteral(value: "not $condition");
+        } else {
+          return LuauLiteral(value: condition);
+        }
+      }
     }
     return null;
   }
@@ -285,6 +302,35 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
   LuauNode? visitNullLiteral(NullLiteral node) {
     return LuauLiteral(value: "nil");
+  }
+
+  @override
+  LuauNode? visitVariableDeclarationList(VariableDeclarationList node) {
+    List<LuauVariableDeclaration> decls = [];
+
+    String? luauType;
+    if (node.type != null) {
+      luauType = _translateType(node.type!.toSource());
+    }
+
+    for (var variable in node.variables) {
+      final name = variable.name.lexeme;
+      LuauNode? valueLego;
+
+      if (variable.initializer != null) {
+        valueLego = variable.initializer!.accept(this);
+      }
+
+      decls.add(
+        LuauVariableDeclaration(
+          name: name,
+          initializer: valueLego,
+          type: luauType,
+        ),
+      );
+    }
+
+    return LuauVariableDeclarationGroup(declarations: decls);
   }
 
   @override
@@ -645,33 +691,6 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
   LuauNode? visitInterpolationString(InterpolationString node) {
     return LuauLiteral(value: node.value);
-  }
-
-  @override
-  LuauNode? visitVariableDeclarationList(VariableDeclarationList node) {
-    final declarationDart = node.variables.first;
-
-    final name = declarationDart.name.lexeme;
-
-    String? luauType;
-
-    if (node.type != null) {
-      final dartType = node.type!.toSource();
-
-      luauType = _translateType(dartType);
-    }
-
-    LuauNode? valueLego;
-
-    if (declarationDart.initializer != null) {
-      valueLego = declarationDart.initializer!.accept(this);
-    }
-
-    return LuauVariableDeclaration(
-      name: name,
-      initializer: valueLego,
-      type: luauType,
-    );
   }
 
   @override
