@@ -37,6 +37,18 @@ class RobloxCompiler {
 
     String finalLuauCode = "";
     bool hasMain = false;
+    List<String> forwardDeclarations = [];
+
+    for (var dartNode in astRoot.declarations) {
+      if (dartNode is FunctionDeclaration) {
+        forwardDeclarations.add("local ${dartNode.name.lexeme}");
+      }
+    }
+
+    if (forwardDeclarations.isNotEmpty) {
+      finalLuauCode += forwardDeclarations.join("\n");
+      finalLuauCode += "\n\n";
+    }
 
     for (var dartNode in astRoot.declarations) {
       if (dartNode is FunctionDeclaration && dartNode.name.lexeme == "main") {

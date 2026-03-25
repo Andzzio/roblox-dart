@@ -1,3 +1,6 @@
+local main
+local executeOperation
+
 function main()
 
 	local salute = function(name: string)
