@@ -28,6 +28,7 @@ import 'package:roblox_dart/luau/statement/luau_variable_declaration.dart';
 import 'package:roblox_dart/luau/statement/luau_while_statement.dart';
 
 class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
+  int _tryDepth = 0;
   @override
   LuauNode? visitFunctionDeclaration(FunctionDeclaration node) {
     final String functionName = node.name.lexeme;
@@ -242,7 +243,34 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       legoValue = node.expression!.accept(this);
     }
 
+    if (_tryDepth > 0) {
+      if (legoValue != null) {
+        return LuauLiteral(
+          value:
+              "_hasReturned = true\n\t\t_returnValue = ${legoValue.emit()}\n\t\treturn",
+        );
+      } else {
+        return LuauLiteral(value: "_hasReturned = true\n\t\treturn");
+      }
+    }
+
     return LuauReturnStatement(expression: legoValue);
+  }
+
+  @override
+  LuauNode? visitBreakStatement(BreakStatement node) {
+    if (_tryDepth > 0) {
+      return LuauLiteral(value: "_hasBroken = true\n\t\treturn");
+    }
+    return LuauLiteral(value: "break");
+  }
+
+  @override
+  LuauNode? visitContinueStatement(ContinueStatement node) {
+    if (_tryDepth > 0) {
+      return LuauLiteral(value: "_hasContinued = true\n\t\treturn");
+    }
+    return LuauLiteral(value: "continue");
   }
 
   @override
@@ -449,11 +477,15 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
   @override
   LuauNode? visitTryStatement(TryStatement node) {
+    _tryDepth++; // Entramos al bloque try (el pcall)
+
     final List<LuauNode> tryBody = [];
     for (var statement in node.body.statements) {
       final lego = statement.accept(this);
       if (lego != null) tryBody.add(lego);
     }
+
+    _tryDepth--;
 
     List<LuauNode> catchBody = [];
     String? errorName;
@@ -468,10 +500,19 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       }
     }
 
+    List<LuauNode> finallyBody = [];
+    if (node.finallyBlock != null) {
+      for (var statement in node.finallyBlock!.statements) {
+        final lego = statement.accept(this);
+        if (lego != null) finallyBody.add(lego);
+      }
+    }
+
     return LuauTryCatch(
       tryBody: tryBody,
       errorName: errorName,
       catchBody: catchBody,
+      finallyBody: finallyBody,
     );
   }
 
