@@ -6,6 +6,7 @@ class LuauFunctionInvocation extends LuauNode {
 
   LuauFunctionInvocation({required this.function, required this.arguments});
 
+  @override
   String emit({int indent = 0}) {
     String argsString = arguments.map((a) => a.emit()).join(", ");
     return "${function.emit()}($argsString)";

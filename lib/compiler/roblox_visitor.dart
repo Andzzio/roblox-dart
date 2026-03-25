@@ -190,7 +190,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       String sectionCode;
 
       if (source.startsWith("?..")) {
-        sectionCode = "_c.${source.substring(3)}";
+        sectionCode = "if _c ~= nil then _c.${source.substring(3)} end";
       } else if (source.startsWith("..")) {
         sectionCode = "_c.${source.substring(2)}";
       } else {
@@ -360,6 +360,24 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       final targetExpression = node.target!;
       bool isStaticClassAccess = false;
 
+      final isList = targetExpression.staticType?.isDartCoreList ?? false;
+
+      if (isList) {
+        if (methodName == "add") {
+          return LuauLiteral(
+            value:
+                "table.insert(${targetLego!.emit()}, ${finalLuauArgs.first.emit()})",
+          );
+        } else if (methodName == 'removeAt') {
+          return LuauLiteral(
+            value:
+                "table.remove(${targetLego!.emit()}, ${finalLuauArgs.first.emit()} + 1)",
+          );
+        } else if (methodName == 'clear') {
+          return LuauLiteral(value: "table.clear(${targetLego!.emit()})");
+        }
+      }
+
       if (targetExpression is Identifier) {
         final element = targetExpression.element;
 
@@ -399,6 +417,36 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       target: targetLego,
       useColon: isColon,
     );
+  }
+
+  @override
+  LuauNode? visitPropertyAccess(PropertyAccess node) {
+    final targetLego = node.target?.accept(this);
+    final propertyName = node.propertyName.name;
+
+    final isList = node.target?.staticType?.isDartCoreList ?? false;
+    final isString = node.target?.staticType?.isDartCoreString ?? false;
+
+    if ((isList || isString) && propertyName == "length") {
+      return LuauLiteral(value: "#${targetLego!.emit()}");
+    }
+
+    return LuauLiteral(value: "${targetLego!.emit()}.$propertyName");
+  }
+
+  @override
+  LuauNode? visitPrefixedIdentifier(PrefixedIdentifier node) {
+    final targetLego = node.prefix.accept(this);
+    final propertyName = node.identifier.name;
+
+    final isList = node.prefix.staticType?.isDartCoreList ?? false;
+    final isString = node.prefix.staticType?.isDartCoreString ?? false;
+
+    if ((isList || isString) && propertyName == 'length') {
+      return LuauLiteral(value: "#${targetLego!.emit()}");
+    }
+
+    return LuauLiteral(value: "${targetLego!.emit()}.$propertyName");
   }
 
   @override
