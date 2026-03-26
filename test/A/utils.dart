@@ -1,0 +1,3 @@
+void fnA() {
+  print("A");
+}

@@ -1,4 +1,11 @@
-local function evenNumbers(limit: number)
+local evenNumbers
+local oddNumbers
+local multiplesOf3
+local listTest
+local fact
+local main
+
+function evenNumbers(limit: number)
 
 	do
 
@@ -20,7 +27,7 @@ local function evenNumbers(limit: number)
 
 end
 
-local function oddNumbers(limit: number)
+function oddNumbers(limit: number)
 
 	local i: number = 1
 
@@ -34,7 +41,7 @@ local function oddNumbers(limit: number)
 
 end
 
-local function multiplesOf3(limit: number)
+function multiplesOf3(limit: number)
 
 	local i: number = 1
 
@@ -52,7 +59,7 @@ local function multiplesOf3(limit: number)
 
 end
 
-local function listTest()
+function listTest()
 
 	local numbers: any = {
 		1,
@@ -62,7 +69,7 @@ local function listTest()
 		5,
 	}
 
-	for _, number in ipairs (numbers) do
+	for _, number in ipairs(numbers) do
 
 		print(number)
 
@@ -70,7 +77,7 @@ local function listTest()
 
 end
 
-local function fact(namedArgs: any): number
+function fact(namedArgs: any): number
 
 	local max: number = if namedArgs and namedArgs.max ~= nil then namedArgs.max else 10
 
@@ -86,7 +93,7 @@ local function fact(namedArgs: any): number
 
 end
 
-local function main()
+function main()
 
 	evenNumbers(10)
 
@@ -97,8 +104,8 @@ local function main()
 	listTest()
 
 	print(fact({
-	["max"] = 5,
-}))
+		["max"] = 5,
+	}))
 
 end
 

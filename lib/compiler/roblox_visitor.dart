@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
+import 'package:path/path.dart' as p;
 import 'package:roblox_dart/compiler/macros/list_macros.dart';
 import 'package:roblox_dart/compiler/macros/string_macros.dart';
 import 'package:roblox_dart/compiler/macros/type_macros.dart';
@@ -8,6 +9,7 @@ import 'package:roblox_dart/compiler/parameter_result.dart';
 import 'package:roblox_dart/luau/declaration/luau_anonymous_function.dart';
 import 'package:roblox_dart/luau/declaration/luau_class.dart';
 import 'package:roblox_dart/luau/declaration/luau_constructor.dart';
+import 'package:roblox_dart/luau/declaration/luau_enum.dart';
 import 'package:roblox_dart/luau/declaration/luau_method.dart';
 import 'package:roblox_dart/luau/expression/luau_assignment_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_binary_expression.dart';
@@ -33,6 +35,9 @@ import 'package:roblox_dart/luau/statement/luau_variable_declaration_group.dart'
 import 'package:roblox_dart/luau/statement/luau_while_statement.dart';
 
 class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
+  String? currentFilePath;
+  String? projectRoot;
+  String? runtimePath;
   int _tryDepth = 0;
   String? _currentClassName;
   String? _currentSuperClassName;
@@ -40,9 +45,11 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   final Set<String> staticClassMembers = {};
   final Set<String> _currentClassMembers = {};
   final Set<String> exports = {};
+  final Set<String> _importedNames = {};
 
   @override
   LuauNode? visitImportDirective(ImportDirective node) {
+    print("DEBUG: Visiting ImportDirective: ${node.uri.stringValue}");
     final uri = node.uri.stringValue;
     if (uri == null) return null;
 
@@ -53,8 +60,17 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       final segments = uri.split('/');
       final fileName = segments.last.split('.').first;
       varName = fileName;
-    }
 
+      int counter = 1;
+      String originalName = varName;
+      while (_importedNames.contains(varName)) {
+        counter++;
+        varName = "$originalName$counter";
+      }
+    }
+    _importedNames.add(varName);
+
+    // Si es un servicio interno de Roblox
     if (uri.startsWith('package:roblox_dart/services.dart')) {
       return LuauVariableDeclaration(
         name: varName,
@@ -63,89 +79,135 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     }
 
     String luauPath;
-    if (uri.startsWith('./') || uri.startsWith('../')) {
-      final cleanUri = uri.replaceAll('.dart', '');
-      final pathSegments = cleanUri.split('/');
-      List<String> luauSegments = [];
-      for (var segment in pathSegments) {
-        if (segment == '.') {
-          luauSegments.add('script.Parent');
-        } else if (segment == '..') {
-          luauSegments.add('script.Parent.Parent');
-        } else {
-          luauSegments.add(segment);
-        }
-      }
-      luauPath = luauSegments.join('.');
+    if (uri.startsWith('package:') || uri.startsWith('dart:')) {
+      final cleanUri = uri.split('/').last.replaceAll('.dart', '');
+      luauPath = '_RD.import(script, "Parent", "$cleanUri")';
     } else {
-      final cleanUri = uri.replaceAll('.dart', '');
-      luauPath = 'script.Parent.$cleanUri';
+      if (currentFilePath != null && projectRoot != null) {
+        final currentDir = p.dirname(currentFilePath!);
+        final importedFileAbsolute = p.normalize(p.join(currentDir, uri));
+        String relPathStr = p
+            .relative(importedFileAbsolute, from: currentDir)
+            .replaceAll('.dart', '');
+
+        final parts = relPathStr.split(p.separator);
+        List<String> segments = ['"Parent"'];
+
+        for (var part in parts) {
+          if (part == '.') {
+            continue;
+          } else if (part == '..') {
+            segments.add('"Parent"');
+          } else {
+            segments.add('"$part"');
+          }
+        }
+        luauPath = '_RD.import(script, ${segments.join(", ")})';
+      } else {
+        final cleanUri = uri.replaceAll('.dart', '').replaceAll('/', '.');
+        luauPath = '_RD.import(script, "Parent", "$cleanUri")';
+      }
     }
 
     String output = "local $varName = require($luauPath)\n";
+
     if (node.prefix == null) {
-      try {
-        final dynamic dynamicNode = node;
-        final element = dynamicNode.element ?? 
-                        dynamicNode.libraryImportElement ?? 
-                        dynamicNode.declaredElement;
-        
-        if (element != null) {
-          final library = element.importedLibrary ?? element.library;
-          if (library != null) {
-            final names = library.exportNamespace.definedNames.keys;
-            for (var name in names) {
-              if (name != varName) {
-                output += "local $name = $varName.$name\n";
-              }
-            }
+      final libraryImportElement = node.libraryImport;
+      final importedLibrary = libraryImportElement?.importedLibrary;
+
+      if (importedLibrary != null) {
+        final names = importedLibrary.exportNamespace.definedNames2.keys;
+
+        for (var name in names) {
+          if (name != varName && !name.startsWith('_')) {
+            output += "local $name = $varName.$name\n";
           }
         }
-      } catch (_) {}
+      } else {
+        print(
+          "DEBUG: No se pudo resolver la librería importada para '$varName' en análisis estático.",
+        );
+      }
     }
 
     return LuauLiteral(value: output);
   }
 
   @override
+  LuauNode? visitEnumDeclaration(EnumDeclaration node) {
+    final String enumName = node.namePart.typeName.lexeme;
+
+    final List<String> constantNames = [];
+    final constantsList = node.body.constants;
+
+    for (var constant in constantsList) {
+      constantNames.add(constant.name.lexeme);
+    }
+
+    exports.add(enumName);
+
+    return LuauEnum(name: enumName, constants: constantNames);
+  }
+
+  @override
   LuauNode? visitExportDirective(ExportDirective node) {
+    print("DEBUG: Visiting ExportDirective: ${node.uri.stringValue}");
     final uri = node.uri.stringValue;
     if (uri == null) return null;
 
-    final dynamic dynamicNode = node;
-    final element = dynamicNode.element ?? dynamicNode.libraryExportElement;
-    
     final segments = uri.split('/');
-    final varName = segments.last.split('.').first;
-    
+    final fileName = segments.last.split('.').first;
+    String varName = fileName;
+
+    int counter = 1;
+    String originalName = varName;
+    while (_importedNames.contains(varName)) {
+      counter++;
+      varName = "$originalName$counter";
+    }
+    _importedNames.add(varName);
+
     String luauPath;
-    if (uri.startsWith('./') || uri.startsWith('../')) {
-      final cleanUri = uri.replaceAll('.dart', '');
-      final pathSegments = cleanUri.split('/');
-      List<String> luauSegments = [];
-      for (var segment in pathSegments) {
-        if (segment == '.') {
-          luauSegments.add('script.Parent');
-        } else if (segment == '..') {
-          luauSegments.add('script.Parent.Parent');
+    if (currentFilePath != null && projectRoot != null) {
+      final currentDir = p.dirname(currentFilePath!);
+      final importedFileAbsolute = p.normalize(p.join(currentDir, uri));
+      String relPathStr = p
+          .relative(importedFileAbsolute, from: currentDir)
+          .replaceAll('.dart', '');
+
+      final parts = relPathStr.split(p.separator);
+      List<String> segmentsList = ['"Parent"'];
+
+      for (var part in parts) {
+        if (part == '.') {
+          continue;
+        } else if (part == '..') {
+          segmentsList.add('"Parent"');
         } else {
-          luauSegments.add(segment);
+          segmentsList.add('"$part"');
         }
       }
-      luauPath = luauSegments.join('.');
+      luauPath = '_RD.import(script, ${segmentsList.join(", ")})';
     } else {
-      final cleanUri = uri.replaceAll('.dart', '');
-      luauPath = 'script.Parent.$cleanUri';
+      final cleanUri = uri.replaceAll('.dart', '').replaceAll('/', '.');
+      luauPath = '_RD.import(script, "Parent", "$cleanUri")';
     }
 
-    if (element != null) {
-      final library = element.exportedLibrary;
-      if (library != null) {
-        final names = library.exportNamespace.definedNames.keys;
-        for (var name in names) {
-          exports.add("$varName.$name");
+    try {
+      final exportElement = node.libraryExport;
+      if (exportElement != null) {
+        final library = exportElement.exportedLibrary;
+        if (library != null) {
+          final names = library.exportNamespace.definedNames2.keys;
+          for (var name in names) {
+            exports.add("$varName.$name");
+          }
         }
       }
+    } catch (e) {
+      print(
+        "DEBUG: Fallo al extraer las variables exportadas de '$varName': $e",
+      );
     }
 
     return LuauVariableDeclaration(
@@ -156,7 +218,13 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
   @override
   LuauNode? visitFunctionDeclaration(FunctionDeclaration node) {
-    final String functionName = node.name.lexeme;
+    String functionName = node.name.lexeme;
+    if (node.isGetter) {
+      functionName = "get_$functionName";
+    } else if (node.isSetter) {
+      functionName = "set_$functionName";
+    }
+
     String? returnTypeLuau;
 
     if (node.returnType != null) {
@@ -471,78 +539,77 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
   @override
   LuauNode? visitAssignmentExpression(AssignmentExpression node) {
-    if (node.leftHandSide is SimpleIdentifier) {
-      final si = node.leftHandSide as SimpleIdentifier;
-      final element = si.element;
-      if (element != null &&
-          element.toString().contains('PropertyAccessorElement')) {
-        final dynamic dynamicElement = element;
+    final left = node.leftHandSide;
+    final right = node.rightHandSide.accept(this);
+    if (right == null) return null;
+
+    // 1. Handle SimpleIdentifier (Local or Top-level setter)
+    if (left is SimpleIdentifier) {
+      final element = left.element;
+      if (element != null) {
         try {
-          if (dynamicElement.isSetter == true) {
-            final right = node.rightHandSide.accept(this);
-            if (right != null && element.name != null) {
-              return LuauCallExpression(
-                target: LuauLiteral(value: "self"),
-                methodName: "set_${element.name!.replaceAll('=', '')}",
-                arguments: [right],
-                useColon: true,
-              );
-            }
-          }
-        } catch (_) {}
-      }
-    } else if (node.leftHandSide is PropertyAccess) {
-      final pa = node.leftHandSide as PropertyAccess;
-      final element = pa.propertyName.element;
-      if (element != null &&
-          element.toString().contains('PropertyAccessorElement')) {
-        final dynamic dynamicElement = element;
-        try {
-          if (dynamicElement.isSetter == true) {
-            final target = pa.target?.accept(this);
-            final right = node.rightHandSide.accept(this);
-            if (target != null && right != null && element.name != null) {
-              return LuauCallExpression(
-                target: target,
-                methodName: "set_${element.name!.replaceAll('=', '')}",
-                arguments: [right],
-                useColon: true,
-              );
-            }
-          }
-        } catch (_) {}
-      }
-    } else if (node.leftHandSide is PrefixedIdentifier) {
-      final pi = node.leftHandSide as PrefixedIdentifier;
-      final element = pi.identifier.element;
-      if (element != null &&
-          element.toString().contains('PropertyAccessorElement')) {
-        final dynamic dynamicElement = element;
-        try {
-          if (dynamicElement.isSetter == true) {
-            final target = pi.prefix.accept(this);
-            final right = node.rightHandSide.accept(this);
-            if (target != null && right != null && element.name != null) {
-              return LuauCallExpression(
-                target: target,
-                methodName: "set_${element.name!.replaceAll('=', '')}",
-                arguments: [right],
-                useColon: true,
-              );
-            }
+          final dynamic dynElem = element;
+          if (dynElem.isSetter == true) {
+            bool isInstance =
+                !dynElem.isStatic &&
+                element.enclosingElement is InterfaceElement;
+            return LuauCallExpression(
+              target: isInstance ? LuauLiteral(value: "self") : null,
+              methodName: "set_${left.name}",
+              arguments: [right],
+              useColon: isInstance,
+            );
           }
         } catch (_) {}
       }
     }
 
-    final leftLego = node.leftHandSide.accept(this);
-    final rightLego = node.rightHandSide.accept(this);
+    // 2. Handle PropertyAccess (obj.prop = val -> obj:set_prop(val))
+    if (left is PropertyAccess) {
+      final property = left.propertyName;
+      final element = property.element;
+      if (element != null) {
+        try {
+          final dynamic dynElem = element;
+          if (dynElem.isSetter == true) {
+            final targetLego = left.target?.accept(this);
+            return LuauCallExpression(
+              target: targetLego,
+              methodName: "set_${property.name}",
+              arguments: [right],
+              useColon: true,
+            );
+          }
+        } catch (_) {}
+      }
+    }
 
-    if (leftLego != null && rightLego != null) {
+    // 3. Handle PrefixedIdentifier (A.prop = val -> A:set_prop(val))
+    if (left is PrefixedIdentifier) {
+      final property = left.identifier;
+      final element = property.element;
+      if (element != null) {
+        try {
+          final dynamic dynElem = element;
+          if (dynElem.isSetter == true) {
+            final targetLego = left.prefix.accept(this);
+            return LuauCallExpression(
+              target: targetLego,
+              methodName: "set_${property.name}",
+              arguments: [right],
+              useColon: true,
+            );
+          }
+        } catch (_) {}
+      }
+    }
+
+    final leftLego = left.accept(this);
+    if (leftLego != null) {
       return LuauAssignmentExpression(
         left: leftLego,
+        right: right,
         operator: node.operator.lexeme,
-        right: rightLego,
       );
     }
     return null;
@@ -909,26 +976,23 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     bool isInstanceMember = false;
     bool isGetter = false;
     if (element != null) {
-      final str = element.toString();
-      final isProp =
-          str.contains('PropertyAccessorElement') || str.contains('Accessor');
-
-      final enclosing = element.enclosingElement;
-      if (enclosing is InterfaceElement || isProp) {
-        if (element is PropertyInducingElement) {
-          isInstanceMember = !element.isStatic;
+      try {
+        final dynamic dynElem = element;
+        if (dynElem.isGetter == true) {
+          isGetter = true;
+          isInstanceMember =
+              !dynElem.isStatic && element.enclosingElement is InterfaceElement;
+        } else if (dynElem.isSetter == true) {
+          isInstanceMember =
+              !dynElem.isStatic && element.enclosingElement is InterfaceElement;
         } else if (element is MethodElement) {
-          isInstanceMember = !element.isStatic;
-        } else {
-          final dynamic dynamicElement = element;
-          try {
-            if (dynamicElement.isGetter == true) {
-              isGetter = true;
-              isInstanceMember = !dynamicElement.isStatic;
-            } else if (dynamicElement.isSetter == true) {
-              isInstanceMember = !dynamicElement.isStatic;
-            }
-          } catch (_) {}
+          isInstanceMember =
+              !element.isStatic && element.enclosingElement is InterfaceElement;
+        }
+      } catch (_) {
+        if (element is MethodElement) {
+          isInstanceMember =
+              !element.isStatic && element.enclosingElement is InterfaceElement;
         }
       }
     }
@@ -960,6 +1024,25 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     if (!isInstanceMember && !isGetter && _currentClassName != null) {
       isInstanceMember =
           allClassMembers.contains(name) || _currentClassMembers.contains(name);
+    }
+
+    // Top-level or library getter redirection
+    if (isGetter && _currentClassName == null) {
+      // Don't redirect during declaration or if it's a property/method access property
+      if (node.parent is VariableDeclaration ||
+          node.parent is FunctionDeclaration ||
+          (node.parent is PropertyAccess &&
+              (node.parent as PropertyAccess).propertyName == node) ||
+          (node.parent is MethodInvocation &&
+              (node.parent as MethodInvocation).methodName == node)) {
+        return LuauLiteral(value: name);
+      }
+      return LuauCallExpression(
+        target: null,
+        methodName: "get_$name",
+        arguments: [],
+        useColon: false,
+      );
     }
 
     if ((isInstanceMember || isGetter) && _currentClassName != null) {

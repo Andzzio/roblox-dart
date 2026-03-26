@@ -1,0 +1,22 @@
+Unhandled exception:
+NoSuchMethodError: Class 'GetterElementImpl' has no instance getter 'isGetter'.
+Receiver: Instance of 'GetterElementImpl'
+Tried calling: isGetter
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      RobloxVisitor.visitSimpleIdentifier (package:roblox_dart/compiler/roblox_visitor.dart:1017:28)
+#2      SimpleIdentifierImpl.accept (package:analyzer/src/dart/ast/ast.dart:26386:50)
+#3      RobloxVisitor._processArguments (package:roblox_dart/compiler/roblox_visitor.dart:1675:29)
+#4      RobloxVisitor.visitMethodInvocation (package:roblox_dart/compiler/roblox_visitor.dart:689:42)
+#5      MethodInvocationImpl.accept (package:analyzer/src/dart/ast/ast.dart:19738:50)
+#6      RobloxVisitor.visitExpressionStatement (package:roblox_dart/compiler/roblox_visitor.dart:454:34)
+#7      ExpressionStatementImpl.accept (package:analyzer/src/dart/ast/ast.dart:10094:50)
+#8      RobloxVisitor.visitFunctionDeclaration (package:roblox_dart/compiler/roblox_visitor.dart:268:37)
+#9      FunctionDeclarationImpl.accept (package:analyzer/src/dart/ast/ast.dart:13441:50)
+#10     RobloxCompiler.compileFile (package:roblox_dart/compiler/roblox_compiler.dart:107:37)
+<asynchronous suspension>
+#11     TranslateCommand.run (package:roblox_dart/cli/commands/translate_command.dart:47:5)
+<asynchronous suspension>
+#12     CommandRunner.runCommand (package:args/command_runner.dart:212:13)
+<asynchronous suspension>
+#13     CommandManager.run (package:roblox_dart/cli/command_manager.dart:13:5)
+<asynchronous suspension>
