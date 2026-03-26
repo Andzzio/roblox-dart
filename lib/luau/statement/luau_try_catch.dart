@@ -4,13 +4,13 @@ class LuauTryCatch extends LuauNode {
   final List<LuauNode> tryBody;
   final String? errorName;
   final List<LuauNode> catchBody;
-  final List<LuauNode> finallyBody; // ¡Nuevo!
+  final List<LuauNode> finallyBody;
 
   LuauTryCatch({
     required this.tryBody,
     this.errorName,
     required this.catchBody,
-    this.finallyBody = const [], // ¡Nuevo!
+    this.finallyBody = const [],
   });
 
   @override

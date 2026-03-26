@@ -35,6 +35,27 @@ class RobloxCompiler {
 
     final visitor = RobloxVisitor();
 
+    for (var dartNode in astRoot.declarations) {
+      if (dartNode is ClassDeclaration) {
+        final body = dartNode.body;
+        if (body is BlockClassBody) {
+          final members = body.members;
+          for (var member in members) {
+            if (member is FieldDeclaration) {
+              final isStatic = member.isStatic;
+              for (var variable in member.fields.variables) {
+                visitor.allClassMembers.add(variable.name.lexeme);
+                if (isStatic) visitor.staticClassMembers.add(variable.name.lexeme);
+              }
+            } else if (member is MethodDeclaration) {
+              visitor.allClassMembers.add(member.name.lexeme);
+              if (member.isStatic) visitor.staticClassMembers.add(member.name.lexeme);
+            }
+          }
+        }
+      }
+    }
+
     String finalLuauCode = "";
     bool hasMain = false;
     List<String> forwardDeclarations = [];
@@ -55,9 +76,16 @@ class RobloxCompiler {
         hasMain = true;
       }
 
-      final masterLego = dartNode.accept(visitor);
-      if (masterLego != null) {
-        finalLuauCode += masterLego.emit();
+      try {
+        final masterLego = dartNode.accept(visitor);
+        if (masterLego != null) {
+          finalLuauCode += masterLego.emit();
+        }
+      } catch (e, s) {
+        print("CRASH during visit of: ${dartNode.toSource()}");
+        print("ERROR: $e");
+        print("STACK: $s");
+        rethrow;
       }
     }
 
