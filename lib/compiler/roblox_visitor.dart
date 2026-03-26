@@ -5,6 +5,9 @@ import 'package:roblox_dart/compiler/macros/list_macros.dart';
 import 'package:roblox_dart/compiler/macros/string_macros.dart';
 import 'package:roblox_dart/compiler/macros/type_macros.dart';
 import 'package:roblox_dart/luau/declaration/luau_anonymous_function.dart';
+import 'package:roblox_dart/luau/declaration/luau_class.dart';
+import 'package:roblox_dart/luau/declaration/luau_constructor.dart';
+import 'package:roblox_dart/luau/declaration/luau_method.dart';
 import 'package:roblox_dart/luau/expression/luau_assignment_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_binary_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_call_expression.dart';
@@ -30,6 +33,8 @@ import 'package:roblox_dart/luau/statement/luau_while_statement.dart';
 
 class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   int _tryDepth = 0;
+  String? _currentClassName;
+  final Set<String> _currentClassMembers = {};
   @override
   LuauNode? visitFunctionDeclaration(FunctionDeclaration node) {
     final String functionName = node.name.lexeme;
@@ -422,18 +427,25 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     if (varLego != null) {
       final symbol = node.operator.lexeme;
 
-      if (symbol == "++") {
-        return LuauAssignmentExpression(
-          left: varLego,
-          operator: "+=",
-          right: LuauLiteral(value: "1"),
-        );
-      } else if (symbol == "--") {
-        return LuauAssignmentExpression(
-          left: varLego,
-          operator: "-=",
-          right: LuauLiteral(value: "1"),
-        );
+      if (symbol == "++" || symbol == "--") {
+        final op = symbol == "++" ? "+=" : "-=";
+
+        bool isStatement =
+            node.parent is ExpressionStatement || node.parent is ForParts;
+
+        if (isStatement) {
+          return LuauAssignmentExpression(
+            left: varLego,
+            operator: op,
+            right: LuauLiteral(value: "1"),
+          );
+        } else {
+          final varStr = varLego.emit();
+          return LuauLiteral(
+            value:
+                "(function() local _v = $varStr; $varStr $op 1; return _v end)()",
+          );
+        }
       } else if (symbol == "!") {
         return varLego;
       }
@@ -448,6 +460,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
     LuauNode? targetLego;
     bool isColon = false;
+    LuauNode? resultNode;
 
     if (node.target != null) {
       targetLego = node.target!.accept(this);
@@ -461,69 +474,79 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
       final args = finalLuauArgs.map((a) => a.emit()).toList();
 
-      // macros
       if (isList) {
         final result = ListMacros.resolve(methodName, targetLego!.emit(), args);
-        if (result != null) return LuauLiteral(value: result);
+        if (result != null) resultNode = LuauLiteral(value: result);
       }
 
-      if (isString) {
+      if (resultNode == null && isString) {
         final result = StringMacros.resolve(
           methodName,
           targetLego!.emit(),
           args,
         );
-        if (result != null) return LuauLiteral(value: result);
+        if (result != null) resultNode = LuauLiteral(value: result);
       }
 
-      if (targetName == "int" || targetName == "double") {
+      if (resultNode == null &&
+          (targetName == "int" || targetName == "double")) {
         final result = TypeMacros.resolve(methodName, targetLego!.emit(), args);
-        if (result != null) return LuauLiteral(value: result);
+        if (result != null) resultNode = LuauLiteral(value: result);
       }
 
-      // colon vs dot
-      if (targetExpression is Identifier) {
-        final element = targetExpression.element;
+      if (resultNode == null) {
+        if (targetExpression is Identifier) {
+          final element = targetExpression.element;
 
-        if (element is ClassElement ||
-            element is ExtensionElement ||
-            element is PrefixElement) {
-          isStaticClassAccess = true;
+          if (element is ClassElement ||
+              element is ExtensionElement ||
+              element is PrefixElement) {
+            isStaticClassAccess = true;
+          }
         }
-      }
 
-      const robloxNamespaces = {
-        "math",
-        "table",
-        "string",
-        "coroutine",
-        "task",
-        "Vector3",
-        "Vector2",
-        "CFrame",
-        "Color3",
-        "UDim2",
-        "Instance",
-      };
+        const robloxNamespaces = {
+          "math",
+          "table",
+          "string",
+          "coroutine",
+          "task",
+          "Vector3",
+          "Vector2",
+          "CFrame",
+          "Color3",
+          "UDim2",
+          "Instance",
+        };
 
-      if (isStaticClassAccess || robloxNamespaces.contains(targetName)) {
-        isColon = false;
-      } else {
-        isColon = true;
+        if (isStaticClassAccess || robloxNamespaces.contains(targetName)) {
+          isColon = false;
+        } else {
+          isColon = true;
+        }
       }
     }
 
-    return LuauCallExpression(
+    resultNode ??= LuauCallExpression(
       methodName: methodName,
       arguments: finalLuauArgs,
       target: targetLego,
       useColon: isColon,
     );
+
+    if (node.isNullAware && targetLego != null) {
+      return LuauLiteral(
+        value:
+            "(if ${targetLego.emit()} ~= nil then ${resultNode.emit()} else nil)",
+      );
+    }
+
+    return resultNode;
   }
 
   @override
   LuauNode? visitTryStatement(TryStatement node) {
-    _tryDepth++; // Entramos al bloque try (el pcall)
+    _tryDepth++;
 
     final List<LuauNode> tryBody = [];
     for (var statement in node.body.statements) {
@@ -617,6 +640,27 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   }
 
   @override
+  LuauNode? visitAssertStatement(AssertStatement node) {
+    final condition = node.condition.accept(this);
+    if (condition == null) return null;
+
+    final List<LuauNode> args = [condition];
+
+    if (node.message != null) {
+      final msg = node.message!.accept(this);
+      if (msg != null) args.add(msg);
+    }
+
+    final call = LuauCallExpression(
+      methodName: "assert",
+      arguments: args,
+      useColon: false,
+    );
+
+    return LuauExpressionStatement(expression: call);
+  }
+
+  @override
   LuauNode? visitPropertyAccess(PropertyAccess node) {
     final targetLego = node.target?.accept(this);
     final propertyName = node.propertyName.name;
@@ -625,10 +669,25 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     final isString = node.target?.staticType?.isDartCoreString ?? false;
 
     if ((isList || isString) && propertyName == "length") {
-      return LuauLiteral(value: "#${targetLego!.emit()}");
+      final lengthNode = LuauLiteral(value: "#${targetLego!.emit()}");
+      if (node.isNullAware) {
+        return LuauLiteral(
+          value:
+              "(if ${targetLego.emit()} ~= nil then ${lengthNode.emit()} else nil)",
+        );
+      }
+      return lengthNode;
     }
 
-    return LuauLiteral(value: "${targetLego!.emit()}.$propertyName");
+    final propStr = "${targetLego!.emit()}.$propertyName";
+
+    if (node.isNullAware) {
+      return LuauLiteral(
+        value: "(if ${targetLego.emit()} ~= nil then $propStr else nil)",
+      );
+    }
+
+    return LuauLiteral(value: propStr);
   }
 
   @override
@@ -660,7 +719,28 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
   @override
   LuauNode? visitSimpleIdentifier(SimpleIdentifier node) {
-    return LuauLiteral(value: node.name);
+    final name = node.name;
+
+    if (_currentClassName != null && _currentClassMembers.contains(name)) {
+      if (node.parent is MethodDeclaration ||
+          node.parent is VariableDeclaration) {
+        return LuauLiteral(value: name);
+      }
+      if (node.parent is PropertyAccess &&
+          (node.parent as PropertyAccess).propertyName == node) {
+        return LuauLiteral(value: name);
+      }
+      if (node.parent is MethodInvocation &&
+          (node.parent as MethodInvocation).methodName == node) {
+        if ((node.parent as MethodInvocation).target != null) {
+          return LuauLiteral(value: name);
+        }
+      }
+
+      return LuauLiteral(value: "self.$name");
+    }
+
+    return LuauLiteral(value: name);
   }
 
   @override
@@ -822,6 +902,11 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
         if (key != null && value != null) {
           legoEntries[key] = value;
         }
+      } else {
+        final key = element.accept(this);
+        if (key != null) {
+          legoEntries[key] = LuauLiteral(value: "true");
+        }
       }
     }
 
@@ -852,13 +937,172 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     final operand = node.operand.accept(this);
     if (operand != null) {
       final operator = node.operator.lexeme;
+
       if (operator == "!") {
         return LuauLiteral(value: "not ${operand.emit()}");
       } else if (operator == "-") {
         return LuauLiteral(value: "-${operand.emit()}");
+      } else if (operator == "~") {
+        return LuauLiteral(value: "bit32.bnot(${operand.emit()})");
+      } else if (operator == "++" || operator == "--") {
+        final op = operator == "++" ? "+=" : "-=";
+
+        bool isStatement =
+            node.parent is ExpressionStatement || node.parent is ForParts;
+
+        if (isStatement) {
+          return LuauAssignmentExpression(
+            left: operand,
+            operator: op,
+            right: LuauLiteral(value: "1"),
+          );
+        } else {
+          final varStr = operand.emit();
+          return LuauLiteral(
+            value: "(function() $varStr $op 1; return $varStr end)()",
+          );
+        }
       }
     }
     return null;
+  }
+
+  @override
+  LuauNode? visitClassDeclaration(ClassDeclaration node) {
+    _currentClassName = node.namePart.typeName.lexeme;
+    _currentClassMembers.clear();
+
+    final classBody = node.body as BlockClassBody;
+    final members = classBody.members;
+
+    for (var member in members) {
+      if (member is FieldDeclaration) {
+        for (var variable in member.fields.variables) {
+          _currentClassMembers.add(variable.name.lexeme);
+        }
+      } else if (member is MethodDeclaration) {
+        _currentClassMembers.add(member.name.lexeme);
+      }
+    }
+
+    LuauNode? constructorNode;
+    final List<LuauNode> methods = [];
+    final List<LuauNode> fieldInitializers = [];
+
+    for (var member in members) {
+      if (member is FieldDeclaration) {
+        for (var variable in member.fields.variables) {
+          if (variable.initializer != null) {
+            final initLego = variable.initializer!.accept(this);
+            if (initLego != null) {
+              fieldInitializers.add(
+                LuauAssignmentExpression(
+                  left: LuauLiteral(value: "self.${variable.name.lexeme}"),
+                  operator: "=",
+                  right: initLego,
+                ),
+              );
+            }
+          }
+        }
+      } else if (member is ConstructorDeclaration) {
+        constructorNode = _buildConstructor(member, fieldInitializers);
+      } else if (member is MethodDeclaration) {
+        final methodNode = member.accept(this);
+        if (methodNode != null) methods.add(methodNode);
+      }
+    }
+
+    constructorNode ??= LuauConstructor(
+      className: _currentClassName!,
+      parameters: [],
+      body: [],
+      fieldInitializers: fieldInitializers,
+    );
+
+    final classNode = LuauClass(
+      name: _currentClassName!,
+      constructorCode: constructorNode,
+      methods: methods,
+    );
+
+    _currentClassName = null;
+    _currentClassMembers.clear();
+
+    return classNode;
+  }
+
+  LuauNode? _buildConstructor(
+    ConstructorDeclaration node,
+    List<LuauNode> fieldInit,
+  ) {
+    List<LuauParameter> fnParams = [];
+    final List<LuauNode> luauBody = [];
+
+    if (node.parameters.parameters.isNotEmpty) {
+      for (var param in node.parameters.parameters) {
+        final paramName = param.name?.lexeme ?? "";
+
+        if (param is FieldFormalParameter) {
+          fnParams.add(LuauParameter(name: paramName, type: "any"));
+          luauBody.add(LuauLiteral(value: "self.$paramName = $paramName"));
+        } else {
+          fnParams.add(LuauParameter(name: paramName, type: "any"));
+        }
+      }
+    }
+
+    final body = node.body;
+    if (body is BlockFunctionBody) {
+      for (var statement in body.block.statements) {
+        final childLego = statement.accept(this);
+        if (childLego != null) luauBody.add(childLego);
+      }
+    }
+
+    return LuauConstructor(
+      className: _currentClassName!,
+      parameters: fnParams,
+      body: luauBody,
+      fieldInitializers: fieldInit,
+    );
+  }
+
+  @override
+  LuauNode? visitMethodDeclaration(MethodDeclaration node) {
+    final String methodName = node.name.lexeme;
+    List<LuauParameter> fnParams = [];
+
+    if (node.parameters != null) {
+      for (var param in node.parameters!.parameters) {
+        fnParams.add(
+          LuauParameter(name: param.name?.lexeme ?? "", type: "any"),
+        );
+      }
+    }
+
+    final List<LuauNode> luauBody = [];
+    final body = node.body;
+
+    if (body is BlockFunctionBody) {
+      for (var statement in body.block.statements) {
+        final childLego = statement.accept(this);
+        if (childLego != null) luauBody.add(childLego);
+      }
+    } else if (body is ExpressionFunctionBody) {
+      final legoValue = body.expression.accept(this);
+      if (legoValue != null) {
+        luauBody.add(LuauReturnStatement(expression: legoValue));
+      }
+    }
+
+    return LuauMethod(
+      className: _currentClassName!,
+      methodName: methodName,
+      parameters: fnParams,
+      body: luauBody,
+      isStatic: node.isStatic,
+    );
   }
 
   List<LuauNode> _packBody(Statement dartCode) {
