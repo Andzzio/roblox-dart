@@ -39,6 +39,121 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   final Set<String> allClassMembers = {};
   final Set<String> staticClassMembers = {};
   final Set<String> _currentClassMembers = {};
+  final Set<String> exports = {};
+
+  @override
+  LuauNode? visitImportDirective(ImportDirective node) {
+    final uri = node.uri.stringValue;
+    if (uri == null) return null;
+
+    String varName;
+    if (node.prefix != null) {
+      varName = node.prefix!.name;
+    } else {
+      final segments = uri.split('/');
+      final fileName = segments.last.split('.').first;
+      varName = fileName;
+    }
+
+    if (uri.startsWith('package:roblox_dart/services.dart')) {
+      return LuauVariableDeclaration(
+        name: varName,
+        initializer: LuauLiteral(value: 'game:GetService("$varName")'),
+      );
+    }
+
+    String luauPath;
+    if (uri.startsWith('./') || uri.startsWith('../')) {
+      final cleanUri = uri.replaceAll('.dart', '');
+      final pathSegments = cleanUri.split('/');
+      List<String> luauSegments = [];
+      for (var segment in pathSegments) {
+        if (segment == '.') {
+          luauSegments.add('script.Parent');
+        } else if (segment == '..') {
+          luauSegments.add('script.Parent.Parent');
+        } else {
+          luauSegments.add(segment);
+        }
+      }
+      luauPath = luauSegments.join('.');
+    } else {
+      final cleanUri = uri.replaceAll('.dart', '');
+      luauPath = 'script.Parent.$cleanUri';
+    }
+
+    String output = "local $varName = require($luauPath)\n";
+    if (node.prefix == null) {
+      try {
+        final dynamic dynamicNode = node;
+        final element = dynamicNode.element ?? 
+                        dynamicNode.libraryImportElement ?? 
+                        dynamicNode.declaredElement;
+        
+        if (element != null) {
+          final library = element.importedLibrary ?? element.library;
+          if (library != null) {
+            final names = library.exportNamespace.definedNames.keys;
+            for (var name in names) {
+              if (name != varName) {
+                output += "local $name = $varName.$name\n";
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    return LuauLiteral(value: output);
+  }
+
+  @override
+  LuauNode? visitExportDirective(ExportDirective node) {
+    final uri = node.uri.stringValue;
+    if (uri == null) return null;
+
+    final dynamic dynamicNode = node;
+    final element = dynamicNode.element ?? dynamicNode.libraryExportElement;
+    
+    final segments = uri.split('/');
+    final varName = segments.last.split('.').first;
+    
+    String luauPath;
+    if (uri.startsWith('./') || uri.startsWith('../')) {
+      final cleanUri = uri.replaceAll('.dart', '');
+      final pathSegments = cleanUri.split('/');
+      List<String> luauSegments = [];
+      for (var segment in pathSegments) {
+        if (segment == '.') {
+          luauSegments.add('script.Parent');
+        } else if (segment == '..') {
+          luauSegments.add('script.Parent.Parent');
+        } else {
+          luauSegments.add(segment);
+        }
+      }
+      luauPath = luauSegments.join('.');
+    } else {
+      final cleanUri = uri.replaceAll('.dart', '');
+      luauPath = 'script.Parent.$cleanUri';
+    }
+
+    if (element != null) {
+      final library = element.exportedLibrary;
+      if (library != null) {
+        final names = library.exportNamespace.definedNames.keys;
+        for (var name in names) {
+          exports.add("$varName.$name");
+        }
+      }
+    }
+
+    return LuauVariableDeclaration(
+      name: varName,
+      initializer: LuauLiteral(value: 'require($luauPath)'),
+    );
+  }
+
   @override
   LuauNode? visitFunctionDeclaration(FunctionDeclaration node) {
     final String functionName = node.name.lexeme;
@@ -49,8 +164,9 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       returnTypeLuau = _translateType(dartType);
     }
 
-    final paramResult =
-        _splitParameters(node.functionExpression.parameters?.parameters);
+    final paramResult = _splitParameters(
+      node.functionExpression.parameters?.parameters,
+    );
 
     final List<LuauNode> luauBody = [];
     luauBody.addAll(paramResult.unpackers);
@@ -68,6 +184,10 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       if (legoValue != null) {
         luauBody.add(LuauReturnStatement(expression: legoValue));
       }
+    }
+
+    if (_tryDepth == 0 && _currentClassName == null) {
+      exports.add(functionName);
     }
 
     return LuauFunction(
@@ -354,7 +474,8 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     if (node.leftHandSide is SimpleIdentifier) {
       final si = node.leftHandSide as SimpleIdentifier;
       final element = si.element;
-      if (element != null && element.toString().contains('PropertyAccessorElement')) {
+      if (element != null &&
+          element.toString().contains('PropertyAccessorElement')) {
         final dynamic dynamicElement = element;
         try {
           if (dynamicElement.isSetter == true) {
@@ -373,7 +494,8 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     } else if (node.leftHandSide is PropertyAccess) {
       final pa = node.leftHandSide as PropertyAccess;
       final element = pa.propertyName.element;
-      if (element != null && element.toString().contains('PropertyAccessorElement')) {
+      if (element != null &&
+          element.toString().contains('PropertyAccessorElement')) {
         final dynamic dynamicElement = element;
         try {
           if (dynamicElement.isSetter == true) {
@@ -393,7 +515,8 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     } else if (node.leftHandSide is PrefixedIdentifier) {
       final pi = node.leftHandSide as PrefixedIdentifier;
       final element = pi.identifier.element;
-      if (element != null && element.toString().contains('PropertyAccessorElement')) {
+      if (element != null &&
+          element.toString().contains('PropertyAccessorElement')) {
         final dynamic dynamicElement = element;
         try {
           if (dynamicElement.isSetter == true) {
@@ -686,9 +809,12 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     final property = node.propertyName;
     final element = property.element;
 
-    print("DEBUG: PropertyAccess: ${node.toSource()}, element: ${element?.runtimeType}, string: $element");
+    print(
+      "DEBUG: PropertyAccess: ${node.toSource()}, element: ${element?.runtimeType}, string: $element",
+    );
 
-    if (element != null && element.toString().contains('PropertyAccessorElement')) {
+    if (element != null &&
+        element.toString().contains('PropertyAccessorElement')) {
       final dynamic dynamicElement = element;
       try {
         if (dynamicElement.isGetter == true) {
@@ -722,15 +848,19 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     }
     return LuauLiteral(value: propertyName);
   }
+
   @override
   LuauNode? visitPrefixedIdentifier(PrefixedIdentifier node) {
     final targetLego = node.prefix.accept(this);
     final property = node.identifier;
     final element = property.element;
 
-    print("DEBUG: PrefixedIdentifier: ${node.toSource()}, element: ${element?.runtimeType}, string: $element");
+    print(
+      "DEBUG: PrefixedIdentifier: ${node.toSource()}, element: ${element?.runtimeType}, string: $element",
+    );
 
-    if (element != null && element.toString().contains('PropertyAccessorElement')) {
+    if (element != null &&
+        element.toString().contains('PropertyAccessorElement')) {
       final dynamic dynamicElement = element;
       try {
         if (dynamicElement.isGetter == true) {
@@ -780,8 +910,9 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     bool isGetter = false;
     if (element != null) {
       final str = element.toString();
-      final isProp = str.contains('PropertyAccessorElement') || str.contains('Accessor');
-      
+      final isProp =
+          str.contains('PropertyAccessorElement') || str.contains('Accessor');
+
       final enclosing = element.enclosingElement;
       if (enclosing is InterfaceElement || isProp) {
         if (element is PropertyInducingElement) {
@@ -792,10 +923,10 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
           final dynamic dynamicElement = element;
           try {
             if (dynamicElement.isGetter == true) {
-               isGetter = true;
-               isInstanceMember = !dynamicElement.isStatic;
+              isGetter = true;
+              isInstanceMember = !dynamicElement.isStatic;
             } else if (dynamicElement.isSetter == true) {
-               isInstanceMember = !dynamicElement.isStatic;
+              isInstanceMember = !dynamicElement.isStatic;
             }
           } catch (_) {}
         }
@@ -804,24 +935,26 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
     bool isStaticMember = false;
     if (element != null) {
-       final str = element.toString();
-       isStaticMember = str.contains('static') || 
-                      (element is PropertyAccessorElement && element.isStatic) ||
-                      (element is VariableElement && element.isStatic) ||
-                      (element is FieldElement && element.isStatic);
-       try {
-         final dynamic dynamicElement = element;
-         if (dynamicElement.isStatic == true) isStaticMember = true;
-       } catch(_) {}
+      final str = element.toString();
+      isStaticMember =
+          str.contains('static') ||
+          (element is PropertyAccessorElement && element.isStatic) ||
+          (element is VariableElement && element.isStatic) ||
+          (element is FieldElement && element.isStatic);
+      try {
+        final dynamic dynamicElement = element;
+        if (dynamicElement.isStatic == true) isStaticMember = true;
+      } catch (_) {}
     }
 
     if (isStaticMember && _currentClassName != null) {
-       return LuauLiteral(value: "$_currentClassName.$name");
+      return LuauLiteral(value: "$_currentClassName.$name");
     }
-    
-    // Fallback if analyzer didn't resolve it but we pre-collected it as static
-    if (!isStaticMember && _currentClassName != null && staticClassMembers.contains(name)) {
-       return LuauLiteral(value: "$_currentClassName.$name");
+
+    if (!isStaticMember &&
+        _currentClassName != null &&
+        staticClassMembers.contains(name)) {
+      return LuauLiteral(value: "$_currentClassName.$name");
     }
 
     if (!isInstanceMember && !isGetter && _currentClassName != null) {
@@ -1144,21 +1277,22 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
     final List<LuauNode> luauBody = [];
 
-    // Mixins
     if (node.withClause != null) {
       for (var mixin in node.withClause!.mixinTypes) {
         String mixinName = "UnknownMixin";
         try {
-           mixinName = (mixin as dynamic).name.lexeme;
+          mixinName = (mixin as dynamic).name.lexeme;
         } catch (_) {
-           try {
-              mixinName = (mixin as dynamic).name2.lexeme;
-           } catch (_) {}
+          try {
+            mixinName = (mixin as dynamic).name2.lexeme;
+          } catch (_) {}
         }
-        luauBody.add(LuauLiteral(value: "-- Applying Mixin: $mixinName"));
-        luauBody.add(LuauLiteral(
+        luauBody.add(
+          LuauLiteral(
             value:
-                "for k, v in pairs($mixinName) do\n\tif k ~= \"new\" and k ~= \"__index\" then\n\t\t$className[k] = v\n\tend\nend"));
+                "for k, v in pairs($mixinName) do\n\tif k ~= \"new\" and k ~= \"__index\" then\n\t\t$className[k] = v\n\tend\nend",
+          ),
+        );
       }
     }
 
@@ -1190,7 +1324,9 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
               if (isStatic) {
                 staticFields.add(
                   LuauAssignmentExpression(
-                    left: LuauLiteral(value: "$className.${variable.name.lexeme}"),
+                    left: LuauLiteral(
+                      value: "$className.${variable.name.lexeme}",
+                    ),
                     operator: "=",
                     right: initLego,
                   ),
@@ -1236,6 +1372,10 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       superClassName: superClassName,
     );
 
+    if (_currentClassName != null) {
+      exports.add(_currentClassName!);
+    }
+
     _currentClassName = null;
     _currentSuperClassName = null;
     _currentClassMembers.clear();
@@ -1260,7 +1400,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
         if (init is SuperConstructorInvocation) {
           final ctorName = init.constructorName?.name ?? "new";
           final args = _processArguments(init.argumentList);
-          
+
           final superFormalParams = node.parameters.parameters
               .whereType<SuperFormalParameter>()
               .map((p) => p.name.lexeme)
@@ -1270,7 +1410,8 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
           allArgs.addAll(args.map((a) => a.emit()));
 
           final argsStr = allArgs.join(", ");
-          customSelfInit = "${_currentSuperClassName ?? "super"}.$ctorName($argsStr)";
+          customSelfInit =
+              "${_currentSuperClassName ?? "super"}.$ctorName($argsStr)";
         } else if (init is RedirectingConstructorInvocation) {
           final ctorName = init.constructorName?.name ?? "new";
           final args = _processArguments(init.argumentList);
@@ -1492,7 +1633,9 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
             unpackers.add(
               LuauExpressionStatement(
                 expression: LuauLiteral(
-                    value: 'assert($paramName ~= nil, "Parameter \'$paramName\' is required")'),
+                  value:
+                      'assert($paramName ~= nil, "Parameter \'$paramName\' is required")',
+                ),
               ),
             );
           }

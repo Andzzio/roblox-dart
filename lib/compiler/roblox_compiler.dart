@@ -71,22 +71,49 @@ class RobloxCompiler {
       finalLuauCode += "\n\n";
     }
 
+    for (var directive in astRoot.directives) {
+      try {
+        final lego = directive.accept(visitor);
+        if (lego != null) {
+          finalLuauCode += lego.emit();
+        }
+      } catch (e) {
+        print("CRASH during visit of directive: ${directive.toSource()}");
+        print("ERROR: $e");
+        rethrow;
+      }
+    }
+
+    if (astRoot.directives.isNotEmpty) finalLuauCode += "\n";
+
     for (var dartNode in astRoot.declarations) {
       if (dartNode is FunctionDeclaration && dartNode.name.lexeme == "main") {
         hasMain = true;
       }
-
       try {
         final masterLego = dartNode.accept(visitor);
         if (masterLego != null) {
           finalLuauCode += masterLego.emit();
         }
-      } catch (e, s) {
+      } catch (e) {
         print("CRASH during visit of: ${dartNode.toSource()}");
         print("ERROR: $e");
-        print("STACK: $s");
         rethrow;
       }
+    }
+
+    if (visitor.exports.isNotEmpty && !hasMain) {
+      finalLuauCode += "\nlocal Exports = {\n";
+      for (var export in visitor.exports) {
+        if (export.contains('.')) {
+          final parts = export.split('.');
+          final name = parts.last;
+          finalLuauCode += "    $name = $export,\n";
+        } else {
+          finalLuauCode += "    $export = $export,\n";
+        }
+      }
+      finalLuauCode += "}\nreturn Exports\n";
     }
 
     if (hasMain) {
