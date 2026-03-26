@@ -415,7 +415,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     if (_tryDepth > 0) {
       return LuauLiteral(value: "_hasBroken = true\n\t\treturn");
     }
-    return LuauLiteral(value: "break");
+    return LuauExpressionStatement(expression: LuauLiteral(value: "break"));
   }
 
   @override
@@ -423,7 +423,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     if (_tryDepth > 0) {
       return LuauLiteral(value: "_hasContinued = true\n\t\treturn");
     }
-    return LuauLiteral(value: "continue");
+    return LuauExpressionStatement(expression: LuauLiteral(value: "continue"));
   }
 
   @override
@@ -483,6 +483,11 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
   @override
   LuauNode? visitIntegerLiteral(IntegerLiteral node) {
+    return LuauLiteral(value: node.toSource());
+  }
+
+  @override
+  LuauNode? visitDoubleLiteral(DoubleLiteral node) {
     return LuauLiteral(value: node.toSource());
   }
 
@@ -1114,7 +1119,13 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
   @override
   LuauNode? visitInterpolationString(InterpolationString node) {
-    return LuauLiteral(value: node.value);
+    String safeValue = node.value
+        .replaceAll('\\', r'\\')
+        .replaceAll('\n', r'\n')
+        .replaceAll('\r', r'\r')
+        .replaceAll('`', r'\`');
+
+    return LuauLiteral(value: safeValue);
   }
 
   @override
@@ -1416,10 +1427,12 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
                 );
               } else {
                 fieldInitializers.add(
-                  LuauAssignmentExpression(
-                    left: LuauLiteral(value: "self.${variable.name.lexeme}"),
-                    operator: "=",
-                    right: initLego,
+                  LuauExpressionStatement(
+                    expression: LuauAssignmentExpression(
+                      left: LuauLiteral(value: "self.${variable.name.lexeme}"),
+                      operator: "=",
+                      right: initLego,
+                    ),
                   ),
                 );
               }
@@ -1505,10 +1518,27 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
           final value = init.expression.accept(this);
           if (value != null) {
             luauBody.add(
-              LuauLiteral(value: "self.$fieldName = ${value.emit()}"),
+              LuauExpressionStatement(
+                expression: LuauAssignmentExpression(
+                  left: LuauLiteral(value: "self.$fieldName"),
+                  operator: "=",
+                  right: value,
+                ),
+              ),
             );
           }
         }
+      }
+    }
+
+    if (customSelfInit == null && _currentSuperClassName != null) {
+      final superParams = node.parameters.parameters
+          .whereType<SuperFormalParameter>()
+          .map((p) => p.name.lexeme)
+          .toList();
+      if (superParams.isNotEmpty) {
+        final argsStr = superParams.join(", ");
+        customSelfInit = "$_currentSuperClassName.new($argsStr)";
       }
     }
 

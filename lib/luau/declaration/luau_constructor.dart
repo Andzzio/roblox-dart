@@ -37,7 +37,7 @@ class LuauConstructor extends LuauNode {
     }
 
     for (var field in fieldInitializers) {
-      output += field.emit(indent: indent + 1);
+      output += "${field.emit(indent: indent + 1)}\n";
     }
 
     for (var node in body) {

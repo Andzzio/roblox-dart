@@ -13,6 +13,6 @@ class LuauAssignmentExpression extends LuauNode {
 
   @override
   String emit({int indent = 0}) {
-    return "${left.emit()} $operator ${right.emit()}";
+    return "${left.emit()} $operator ${right.emit(indent: indent)}";
   }
 }

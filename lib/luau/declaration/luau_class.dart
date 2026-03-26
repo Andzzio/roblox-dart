@@ -18,6 +18,7 @@ class LuauClass extends LuauNode {
   @override
   String emit({int indent = 0}) {
     final String tabs = "\t" * indent;
+    final String innerTabs = "\t" * (indent + 1);
 
     String output = "";
 
@@ -27,7 +28,23 @@ class LuauClass extends LuauNode {
       output += "${tabs}local $name = {}\n";
     }
 
-    output += "$tabs$name.__index = $name\n\n";
+    output += "$tabs$name.__index = function(self, key)\n";
+    output += "${innerTabs}local getter = $name[\"get_\" .. tostring(key)]\n";
+    output += "${innerTabs}if getter then\n";
+    output += "$innerTabs\treturn getter(self)\n";
+    output += "${innerTabs}end\n";
+    output += "${innerTabs}return $name[key]\n";
+    output += "${tabs}end\n\n";
+
+    output += "$tabs$name.__newindex = function(self, key, value)\n";
+    output += "${innerTabs}local setter = $name[\"set_\" .. tostring(key)]\n";
+    output += "${innerTabs}if setter then\n";
+    output += "$innerTabs\tsetter(self, value)\n";
+    output += "${innerTabs}else\n";
+    output += "$innerTabs\trawset(self, key, value)\n";
+    output += "${innerTabs}end\n";
+    output += "${tabs}end\n\n";
+    // -----------------------------------------------
 
     for (var constructorCode in constructors) {
       output += constructorCode.emit(indent: indent);
