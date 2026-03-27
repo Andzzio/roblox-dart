@@ -30,6 +30,7 @@ import 'package:roblox_dart/luau/expression/luau_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
 import 'package:roblox_dart/luau/declaration/luau_parameter.dart';
 import 'package:roblox_dart/luau/statement/luau_numeric__for_statement.dart';
+import 'package:roblox_dart/luau/statement/luau_pair_for_each.dart';
 import 'package:roblox_dart/luau/statement/luau_return_statement.dart';
 import 'package:roblox_dart/luau/statement/luau_try_catch.dart';
 import 'package:roblox_dart/luau/statement/luau_variable_declaration.dart';
@@ -345,7 +346,12 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     for (var section in node.cascadeSections) {
       final sectionLego = section.accept(this);
       if (sectionLego != null) {
-        innerCode += "\t\t_c.${sectionLego.emit()}\n";
+        final emitted = sectionLego.emit();
+        if (emitted.startsWith(':') || emitted.startsWith('.')) {
+          innerCode += "\t\t_c$emitted\n";
+        } else {
+          innerCode += "\t\t_c.$emitted\n";
+        }
       } else {
         String source = section.toSource().trim();
         if (source.startsWith("?..")) {
@@ -691,6 +697,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
 
         final isList = targetExpression.staticType?.isDartCoreList ?? false;
         final isString = targetExpression.staticType?.isDartCoreString ?? false;
+        final isMap = targetExpression.staticType?.isDartCoreMap ?? false;
         final String targetName = targetExpression.toSource();
 
         final args = finalLuauArgs.map((a) => a.emit()).toList();
@@ -698,7 +705,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
         if (isList) {
           final result = ListMacros.resolve(
             methodName,
-            targetLego!.emit(),
+            targetLego?.emit() ?? (node.isCascaded ? "_c" : "self"),
             args,
           );
           if (result != null) resultNode = LuauLiteral(value: result);
@@ -710,10 +717,20 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
           resultNode = LuauLiteral(value: "os.date('%Y-%m-%d %H:%M:%S')");
         }
 
+        if (resultNode == null &&
+            isMap &&
+            methodName == "forEach" &&
+            finalLuauArgs.length == 1) {
+          resultNode = LuauPairForEach(
+            target: targetLego ?? LuauLiteral(value: "_c"),
+            callback: finalLuauArgs[0],
+          );
+        }
+
         if (resultNode == null && isString) {
           final result = StringMacros.resolve(
             methodName,
-            targetLego!.emit(),
+            targetLego?.emit() ?? (node.isCascaded ? "_c" : "self"),
             args,
           );
           if (result != null) resultNode = LuauLiteral(value: result);
@@ -761,6 +778,16 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
           }
         }
       }
+    } else {
+      print("DEBUG: Method ${node.methodName} isCascaded: ${node.isCascaded}");
+      isColon = node.isCascaded;
+    }
+
+    if (resultNode == null) {
+      final args = finalLuauArgs.map((a) => a.emit()).toList();
+      final target = targetLego?.emit() ?? (node.isCascaded ? "_c" : "self");
+      final result = TypeMacros.resolve(methodName, target, args);
+      if (result != null) resultNode = LuauLiteral(value: result);
     }
 
     resultNode ??= LuauCallExpression(
@@ -937,8 +964,16 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     }
 
     if (target != null) {
-      return LuauLiteral(value: "${target.emit()}.$propertyName");
+      final propertyNode = LuauLiteral(value: "${target.emit()}.$propertyName");
+      if (node.isNullAware) {
+        return LuauLiteral(
+          value:
+              "(function() local _v = ${target.emit()}; if _v ~= nil then return _v.$propertyName else return nil end end)()",
+        );
+      }
+      return propertyNode;
     }
+
     return LuauLiteral(value: propertyName);
   }
 

@@ -24,6 +24,7 @@ class LuauCallExpression extends LuauNode {
       return "${target!.emit()}$operator$methodName($argsText)";
     }
 
-    return "$methodName($argsText)";
+    final operator = useColon ? ":" : "";
+    return "$operator$methodName($argsText)";
   }
 }

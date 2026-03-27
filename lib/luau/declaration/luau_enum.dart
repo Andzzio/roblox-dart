@@ -18,7 +18,7 @@ class LuauEnum extends LuauNode {
     output += "$innerTabs}\n";
     output += "${innerTabs}local function _create(cname, index)\n";
     output +=
-        "$innerTabs\tlocal obj = { index = index, _name = \"$name.\" .. cname }\n";
+        "$innerTabs\tlocal obj = { index = index, name = cname, _name = \"$name.\" .. cname }\n";
     output += "$innerTabs\tsetmetatable(obj, _mt)\n";
     output += "$innerTabs\ttable.freeze(obj)\n";
     output += "$innerTabs\treturn obj\n";
