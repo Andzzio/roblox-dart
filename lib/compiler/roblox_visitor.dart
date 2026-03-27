@@ -19,6 +19,7 @@ import 'package:roblox_dart/luau/expression/luau_function_invocation.dart';
 import 'package:roblox_dart/luau/expression/luau_index_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_list_literal.dart';
 import 'package:roblox_dart/luau/expression/luau_map_literal.dart';
+import 'package:roblox_dart/luau/statement/luau_continue_statement.dart';
 import 'package:roblox_dart/luau/statement/luau_do_statement.dart';
 import 'package:roblox_dart/luau/statement/luau_expression_statement.dart';
 import 'package:roblox_dart/luau/statement/luau_for_in_statement.dart';
@@ -28,6 +29,7 @@ import 'package:roblox_dart/luau/statement/luau_if_statement.dart';
 import 'package:roblox_dart/luau/expression/luau_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
 import 'package:roblox_dart/luau/declaration/luau_parameter.dart';
+import 'package:roblox_dart/luau/statement/luau_numeric__for_statement.dart';
 import 'package:roblox_dart/luau/statement/luau_return_statement.dart';
 import 'package:roblox_dart/luau/statement/luau_try_catch.dart';
 import 'package:roblox_dart/luau/statement/luau_variable_declaration.dart';
@@ -35,6 +37,7 @@ import 'package:roblox_dart/luau/statement/luau_variable_declaration_group.dart'
 import 'package:roblox_dart/luau/statement/luau_while_statement.dart';
 
 class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
+  List<LuauNode>? _currentLoopUpdaters;
   String? currentFilePath;
   String? projectRoot;
   String? runtimePath;
@@ -219,11 +222,17 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   @override
   LuauNode? visitFunctionDeclaration(FunctionDeclaration node) {
     String functionName = node.name.lexeme;
+
     if (node.isGetter) {
       functionName = "get_$functionName";
     } else if (node.isSetter) {
       functionName = "set_$functionName";
     }
+
+    bool isLocal =
+        node.parent is Block ||
+        node.parent is BlockFunctionBody ||
+        node.parent is FunctionDeclarationStatement;
 
     String? returnTypeLuau;
 
@@ -263,7 +272,13 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
       body: luauBody,
       parameters: paramResult.fnParams,
       returnType: returnTypeLuau,
+      isLocal: isLocal,
     );
+  }
+
+  @override
+  LuauNode? visitGenericTypeAlias(GenericTypeAlias node) {
+    return null;
   }
 
   @override
@@ -423,7 +438,7 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     if (_tryDepth > 0) {
       return LuauLiteral(value: "_hasContinued = true\n\t\treturn");
     }
-    return LuauExpressionStatement(expression: LuauLiteral(value: "continue"));
+    return LuauContinueStatement(updaters: _currentLoopUpdaters);
   }
 
   @override
@@ -687,6 +702,12 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
             args,
           );
           if (result != null) resultNode = LuauLiteral(value: result);
+        }
+
+        if (resultNode == null &&
+            targetName == "DateTime" &&
+            methodName == "now") {
+          resultNode = LuauLiteral(value: "os.date('%Y-%m-%d %H:%M:%S')");
         }
 
         if (resultNode == null && isString) {
@@ -1187,6 +1208,10 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   LuauNode? visitForStatement(ForStatement node) {
     if (node.forLoopParts is ForPartsWithDeclarations) {
       final forParts = node.forLoopParts as ForPartsWithDeclarations;
+
+      final numericFor = _tryParseNumericFor(forParts, node.body);
+      if (numericFor != null) return numericFor;
+
       final legoInit = forParts.variables.accept(this);
       final legoCond = forParts.condition?.accept(this);
 
@@ -1196,7 +1221,13 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
         final lego = updater.accept(this);
         if (lego != null) legoUpdaters.add(lego);
       }
+
+      final oldUpdaters = _currentLoopUpdaters;
+      _currentLoopUpdaters = legoUpdaters;
+
       final backpackBody = _packBody(node.body);
+
+      _currentLoopUpdaters = oldUpdaters;
 
       return LuauForStatement(
         initializer: legoInit,
@@ -1564,10 +1595,40 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
   }
 
   @override
+  LuauNode? visitAdjacentStrings(AdjacentStrings node) {
+    String combined = "";
+    for (var string in node.strings) {
+      final lego = string.accept(this);
+      if (lego != null) {
+        String val = lego.emit();
+        if ((val.startsWith('"') && val.endsWith('"')) ||
+            (val.startsWith("'") && val.endsWith("'")) ||
+            (val.startsWith('`') && val.endsWith('`'))) {
+          combined += val.substring(1, val.length - 1);
+        } else {
+          combined += val;
+        }
+      }
+    }
+    return LuauLiteral(value: "`$combined`");
+  }
+
+  @override
+  LuauNode? visitFunctionDeclarationStatement(
+    FunctionDeclarationStatement node,
+  ) {
+    return node.functionDeclaration.accept(this);
+  }
+
+  @override
   LuauNode? visitInstanceCreationExpression(InstanceCreationExpression node) {
     final constructorName = node.constructorName;
-    final typeName = constructorName.type.toSource();
+    final typeName = constructorName.type.toSource().split("<").first;
     final String ctorName = constructorName.name?.toSource() ?? "new";
+
+    if (typeName == "DateTime" && ctorName == "now") {
+      return LuauLiteral(value: "os.date('%Y-%m-%d %H:%M:%S')");
+    }
 
     final args = _processArguments(node.argumentList);
 
@@ -1771,5 +1832,50 @@ class RobloxVisitor extends SimpleAstVisitor<LuauNode> {
     }
 
     return ParameterResult(fnParams, unpackers, fieldAssignments, hasNamed);
+  }
+
+  LuauNode? _tryParseNumericFor(
+    ForPartsWithDeclarations parts,
+    Statement body,
+  ) {
+    if (parts.variables.variables.length != 1) return null;
+    final variable = parts.variables.variables.first;
+    final varName = variable.name.lexeme;
+    if (parts.condition is! BinaryExpression) return null;
+    final cond = parts.condition as BinaryExpression;
+    if (cond.leftOperand.toSource() != varName) return null;
+    if (cond.operator.lexeme != "<" && cond.operator.lexeme != "<=") {
+      return null;
+    }
+    if (parts.updaters.length != 1) return null;
+    final updater = parts.updaters.first;
+    String updaterSrc = updater.toSource().replaceAll(" ", "");
+
+    bool isSimpleInc =
+        updaterSrc == "$varName++" ||
+        updaterSrc == "++$varName" ||
+        updaterSrc == "$varName+=1" ||
+        updaterSrc == "$varName=$varName+1";
+
+    if (!isSimpleInc) return null;
+
+    final startLego = variable.initializer?.accept(this);
+    final endLego = cond.rightOperand.accept(this);
+    if (startLego == null || endLego == null) return null;
+
+    LuauNode finalEnd = endLego;
+    if (cond.operator.lexeme == "<") {
+      finalEnd = LuauBinaryExpression(
+        left: endLego,
+        operator: "-",
+        right: LuauLiteral(value: "1"),
+      );
+    }
+    return LuauNumericForStatement(
+      variable: varName,
+      start: startLego,
+      end: finalEnd,
+      body: _packBody(body),
+    );
   }
 }

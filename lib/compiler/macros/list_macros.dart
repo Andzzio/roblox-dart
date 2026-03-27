@@ -4,6 +4,7 @@ class ListMacros {
     "removeAt": _removeAt,
     "clear": _clear,
     "indexOf": _indexOf,
+    "join": _join,
   };
 
   static String? resolve(String method, String target, List<String> args) {
@@ -16,4 +17,6 @@ class ListMacros {
   static String _clear(String t, List<String> _) => "table.clear($t)";
   static String _indexOf(String t, List<String> a) =>
       "(function() for i, v in ipairs($t) do if v == ${a[0]} then return i - 1 end end return -1 end)()";
+  static String _join(String t, List<String> a) =>
+      "table.concat({table.unpack($t)}, ${a.isNotEmpty ? a[0] : '""'})";
 }

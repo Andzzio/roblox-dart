@@ -156,43 +156,25 @@ function PhysicsWorld:spawnParticle(p)
 end
 
 function PhysicsWorld:simulateStep(deltaTime)
-	do
+	for i = 0, #self._particles - 1 do
+		local particle = self._particles[i + 1]
 
-		local i: number = 0
+		if particle.velocity.x == 0 and particle.velocity.y == 0 then
 
-		while i < #self._particles do
-
-			local particle = self._particles[i + 1]
-
-			if particle.velocity.x == 0 and particle.velocity.y == 0 then
-
-				continue
-			end
-
-			particle:update(deltaTime)
-			i += 1
-
+			continue
 		end
 
+		particle:update(deltaTime)
 	end
 
 end
 
 function PhysicsWorld:printStatus()
 	print("\n--- World Status ---")
-	do
+	for i = 0, #self._particles - 1 do
+		local p = self._particles[i + 1]
 
-		local i: number = 0
-
-		while i < #self._particles do
-
-			local p = self._particles[i + 1]
-
-			print(`Particle \`{p.id}\` -> X: {p.position.x}, Y: {p.position.y}`)
-			i += 1
-
-		end
-
+		print(`Particle \`{p.id}\` -> X: {p.position.x}, Y: {p.position.y}`)
 	end
 
 end
@@ -206,18 +188,9 @@ function main()
 	world:spawnParticle(BouncingParticle.new("Beta", 18.0, 0.0, Vector2D.new(5.0, 0.0), 20.0))
 	world:spawnParticle(BouncingParticle.new("Gamma", -5.0, -5.0, Vector2D.new(0.0, 0.0), 20.0))
 	print("Simulating 3 steps...")
-	do
-
-		local step: number = 1
-
-		while step <= 3 do
-
-			print(`\nStep {step}:`)
-			world:simulateStep(1.0)
-			step += 1
-
-		end
-
+	for step = 1, 3 do
+		print(`\nStep {step}:`)
+		world:simulateStep(1.0)
 	end
 
 	world:printStatus()

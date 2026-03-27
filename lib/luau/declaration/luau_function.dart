@@ -6,12 +6,14 @@ class LuauFunction extends LuauNode {
   final List<LuauNode> body;
   final List<LuauParameter> parameters;
   final String? returnType;
+  final bool isLocal;
 
   LuauFunction({
     required this.name,
     required this.body,
     this.parameters = const [],
     this.returnType,
+    this.isLocal = false,
   });
 
   @override
@@ -22,7 +24,9 @@ class LuauFunction extends LuauNode {
 
     final String retStr = returnType != null ? ": $returnType" : "";
 
-    String output = "${tabs}function $name($paramText)$retStr\n\n";
+    final String prefix = isLocal ? "local " : "";
+
+    String output = "$tabs${prefix}function $name($paramText)$retStr\n\n";
 
     for (var node in body) {
       output += node.emit(indent: indent + 1);
