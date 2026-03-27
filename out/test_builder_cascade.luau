@@ -43,6 +43,11 @@ Modifier.__newindex = function(self, key, value)
 	end
 end
 
+Modifier.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "Modifier"
+end
+
 function Modifier.new(name, multiplier)
 	local self = setmetatable({}, Modifier)
 
@@ -68,6 +73,11 @@ Weapon.__newindex = function(self, key, value)
 	else
 		rawset(self, key, value)
 	end
+end
+
+Weapon.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "Weapon"
 end
 
 function Weapon.forged(name, baseDamage, rarity)
@@ -114,6 +124,11 @@ Player.__newindex = function(self, key, value)
 	else
 		rawset(self, key, value)
 	end
+end
+
+Player.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "Player"
 end
 
 function Player.new(username)

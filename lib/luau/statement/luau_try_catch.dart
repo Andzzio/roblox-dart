@@ -17,42 +17,34 @@ class LuauTryCatch extends LuauNode {
   String emit({int indent = 0}) {
     final String tabs = "\t" * indent;
     final String err = errorName ?? "_err";
-
     String output = "";
-
-    output += "${tabs}local _hasReturned = false\n";
-    output += "${tabs}local _returnValue = nil\n";
-    output += "${tabs}local _hasBroken = false\n";
-    output += "${tabs}local _hasContinued = false\n\n";
-
-    output += "${tabs}local _ok, _luau_err = pcall(function()\n";
-
+    output += "${tabs}do\n";
+    final innerTabs = "$tabs\t";
+    output += "${innerTabs}local _hasReturned = false\n";
+    output += "${innerTabs}local _returnValue = nil\n";
+    output += "${innerTabs}local _hasBroken = false\n";
+    output += "${innerTabs}local _hasContinued = false\n\n";
+    output += "${innerTabs}local _ok, _luau_err = pcall(function()\n";
     for (var node in tryBody) {
-      output += node.emit(indent: indent + 1);
+      output += node.emit(indent: indent + 2);
     }
-
-    output += "${tabs}end)\n\n";
-
+    output += "${innerTabs}end)\n\n";
     if (catchBody.isNotEmpty) {
-      output += "${tabs}if not _ok then\n";
-      output += "$tabs\tlocal $err = _luau_err\n";
+      output += "${innerTabs}if not _ok then\n";
+      output += "$innerTabs\tlocal $err = _luau_err\n";
       for (var node in catchBody) {
-        output += node.emit(indent: indent + 1);
+        output += node.emit(indent: indent + 2);
       }
-      output += "${tabs}end\n\n";
+      output += "${innerTabs}end\n\n";
     }
-
     if (finallyBody.isNotEmpty) {
       for (var node in finallyBody) {
-        output += node.emit(indent: indent);
+        output += node.emit(indent: indent + 1);
       }
       output += "\n";
     }
-
-    output += "${tabs}if _hasReturned then return _returnValue end\n";
-    output += "${tabs}if _hasBroken then break end\n";
-    output += "${tabs}if _hasContinued then continue end\n\n";
-
+    output += "${innerTabs}if _hasReturned then return _returnValue end\n";
+    output += "${tabs}end\n";
     return output;
   }
 }

@@ -37,15 +37,20 @@ class RobloxCompiler {
     );
 
     final visitor = RobloxVisitor();
-    visitor.projectRoot = p.normalize(p.absolute(context.contextRoot.root.path));
+    visitor.projectRoot = p.normalize(
+      p.absolute(context.contextRoot.root.path),
+    );
     visitor.currentFilePath = normalizedPath;
 
-    // Calculate runtimePath relative to current file
     final testDir = p.join(Directory.current.path, 'test');
     final relativeToTest = p.relative(normalizedPath, from: testDir);
-    final levels = p.split(p.dirname(relativeToTest)).where((s) => s != '.').length;
+    final levels = p
+        .split(p.dirname(relativeToTest))
+        .where((s) => s != '.')
+        .length;
     final parentPrefix = List.filled(levels + 1, 'Parent').join('.');
-    visitor.runtimePath = '(script.$parentPrefix :: any):WaitForChild("include"):WaitForChild("RuntimeLib")';
+    visitor.runtimePath =
+        '(script.$parentPrefix :: any):WaitForChild("include"):WaitForChild("RuntimeLib")';
 
     for (var dartNode in astRoot.declarations) {
       if (dartNode is ClassDeclaration) {
@@ -57,11 +62,15 @@ class RobloxCompiler {
               final isStatic = member.isStatic;
               for (var variable in member.fields.variables) {
                 visitor.allClassMembers.add(variable.name.lexeme);
-                if (isStatic) visitor.staticClassMembers.add(variable.name.lexeme);
+                if (isStatic) {
+                  visitor.staticClassMembers.add(variable.name.lexeme);
+                }
               }
             } else if (member is MethodDeclaration) {
               visitor.allClassMembers.add(member.name.lexeme);
-              if (member.isStatic) visitor.staticClassMembers.add(member.name.lexeme);
+              if (member.isStatic) {
+                visitor.staticClassMembers.add(member.name.lexeme);
+              }
             }
           }
         }
@@ -136,7 +145,10 @@ class RobloxCompiler {
       finalLuauCode += "main()\n";
     }
 
-    final String relativePath = p.relative(file.path, from: p.join(Directory.current.path, 'test'));
+    final String relativePath = p.relative(
+      file.path,
+      from: p.join(Directory.current.path, 'test'),
+    );
     final String luauRelativePath = relativePath.replaceAll(".dart", ".luau");
     final String outDirPath = p.join(Directory.current.path, "out");
     final String outPath = p.join(outDirPath, luauRelativePath);

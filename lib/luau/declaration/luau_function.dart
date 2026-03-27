@@ -1,5 +1,7 @@
 import 'package:roblox_dart/luau/luau_node.dart';
 import 'package:roblox_dart/luau/declaration/luau_parameter.dart';
+import 'package:roblox_dart/luau/statement/luau_return_statement.dart';
+import 'package:roblox_dart/luau/statement/luau_try_catch.dart';
 
 class LuauFunction extends LuauNode {
   final String name;
@@ -28,10 +30,15 @@ class LuauFunction extends LuauNode {
 
     String output = "$tabs${prefix}function $name($paramText)$retStr\n\n";
 
+    final bool hasTryCatch = body.any((n) => n is LuauTryCatch);
+    final bool endsWithReturn =
+        body.isNotEmpty && body.last is LuauReturnStatement;
     for (var node in body) {
       output += node.emit(indent: indent + 1);
     }
-
+    if (hasTryCatch && !endsWithReturn) {
+      output += "$tabs\treturn\n";
+    }
     output += "${tabs}end\n\n";
 
     return output;

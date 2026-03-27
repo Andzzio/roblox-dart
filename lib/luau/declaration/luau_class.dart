@@ -5,6 +5,7 @@ class LuauClass extends LuauNode {
   final List<LuauNode> constructors;
   final List<LuauNode> methods;
   final List<LuauNode> staticFields;
+  final List<LuauNode> mixinInjections;
   final String? superClassName;
 
   LuauClass({
@@ -12,6 +13,7 @@ class LuauClass extends LuauNode {
     required this.constructors,
     required this.methods,
     this.staticFields = const [],
+    this.mixinInjections = const [],
     this.superClassName,
   });
 
@@ -44,7 +46,11 @@ class LuauClass extends LuauNode {
     output += "$innerTabs\trawset(self, key, value)\n";
     output += "${innerTabs}end\n";
     output += "${tabs}end\n\n";
-    // -----------------------------------------------
+
+    output += "$tabs$name.__tostring = function(self)\n";
+    output += "${innerTabs}if self.toString then return self:toString() end\n";
+    output += "${innerTabs}return \"$name\"\n";
+    output += "${tabs}end\n\n";
 
     for (var constructorCode in constructors) {
       output += constructorCode.emit(indent: indent);
@@ -58,6 +64,11 @@ class LuauClass extends LuauNode {
 
     for (var field in staticFields) {
       output += field.emit(indent: indent);
+      output += "\n";
+    }
+
+    for (var injection in mixinInjections) {
+      output += injection.emit(indent: indent);
       output += "\n";
     }
 
