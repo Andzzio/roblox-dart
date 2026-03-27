@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:path/path.dart' as p;
+import 'package:roblox_dart/compiler/compiler_logger.dart';
 import 'package:roblox_dart/compiler/visitor/roblox_visitor_base.dart';
 import 'package:roblox_dart/luau/expression/luau_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
@@ -8,7 +9,7 @@ import 'package:roblox_dart/luau/statement/luau_variable_declaration.dart';
 mixin ImportVisitor on RobloxVisitorBase {
   @override
   LuauNode? visitImportDirective(ImportDirective node) {
-    print("DEBUG: Visiting ImportDirective: ${node.uri.stringValue}");
+    CompilerLogger.debug("Visiting ImportDirective: ${node.uri.stringValue}");
     final uri = node.uri.stringValue;
     if (uri == null) return null;
 
@@ -82,9 +83,7 @@ mixin ImportVisitor on RobloxVisitorBase {
           }
         }
       } else {
-        print(
-          "DEBUG: No se pudo resolver la librería importada para '$varName' en análisis estático.",
-        );
+        CompilerLogger.debug("No se pudo resolver la librería importada para '$varName' en análisis estático.");
       }
     }
 
@@ -93,7 +92,7 @@ mixin ImportVisitor on RobloxVisitorBase {
 
   @override
   LuauNode? visitExportDirective(ExportDirective node) {
-    print("DEBUG: Visiting ExportDirective: ${node.uri.stringValue}");
+    CompilerLogger.debug("Visiting ExportDirective: ${node.uri.stringValue}");
     final uri = node.uri.stringValue;
     if (uri == null) return null;
 
@@ -147,9 +146,7 @@ mixin ImportVisitor on RobloxVisitorBase {
         }
       }
     } catch (e) {
-      print(
-        "DEBUG: Fallo al extraer las variables exportadas de '$varName': $e",
-      );
+      CompilerLogger.debug("Fallo al extraer las variables exportadas de '$varName': $e");
     }
 
     return LuauVariableDeclaration(

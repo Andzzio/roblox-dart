@@ -1,7 +1,6 @@
 name: roblox_dart
-description: A sample command-line application.
+description: A Dart-to-Luau transpiler for Roblox game development.
 version: 1.0.0
-# repository: https://github.com/my_org/my_repo
 environment:
   sdk: ^3.11.1
 

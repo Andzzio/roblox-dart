@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
+import 'package:roblox_dart/compiler/compiler_logger.dart';
 import 'package:roblox_dart/compiler/roblox_compiler.dart';
 
 class TranslateCommand extends Command {
@@ -9,6 +10,12 @@ class TranslateCommand extends Command {
       abbr: "t",
       help: "Path to the Dart file to translate",
       mandatory: true,
+    );
+    argParser.addFlag(
+      "verbose",
+      abbr: "v",
+      help: "Muestra mensajes de debug del compilador.",
+      negatable: false,
     );
   }
 
@@ -21,6 +28,7 @@ class TranslateCommand extends Command {
   @override
   Future<void> run() async {
     print("Starting...");
+    CompilerLogger.verbose = argResults?['verbose'] == true;
     final String? targetPath = argResults?["target"];
 
     if (targetPath == null) {

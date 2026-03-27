@@ -303,4 +303,19 @@ abstract class RobloxVisitorBase extends SimpleAstVisitor<LuauNode> {
       isFactory: node.factoryKeyword != null,
     );
   }
+
+  void reset() {
+    currentLoopUpdaters = null;
+    currentFilePath = null;
+    projectRoot = null;
+    runtimePath = null;
+    tryDepth = 0;
+    currentClassName = null;
+    currentSuperClassName = null;
+    allClassMembers.clear();
+    staticClassMembers.clear();
+    currentClassMembers.clear();
+    exports.clear();
+    importedNames.clear();
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/element.dart';
+import 'package:roblox_dart/compiler/compiler_logger.dart';
 import 'package:roblox_dart/compiler/macros/list_macros.dart';
 import 'package:roblox_dart/compiler/macros/string_macros.dart';
 import 'package:roblox_dart/compiler/macros/type_macros.dart';
@@ -84,7 +85,7 @@ mixin ExpressionVisitor on RobloxVisitorBase {
               useColon: isInstance,
             );
           }
-        } catch (_) {}
+        } catch (e) { CompilerLogger.debug('isSetter check failed (SimpleIdentifier): $e'); }
       }
     }
 
@@ -103,7 +104,7 @@ mixin ExpressionVisitor on RobloxVisitorBase {
               useColon: true,
             );
           }
-        } catch (_) {}
+        } catch (e) { CompilerLogger.debug('isSetter check failed (PropertyAccess): $e'); }
       }
     }
 
@@ -122,7 +123,7 @@ mixin ExpressionVisitor on RobloxVisitorBase {
               useColon: true,
             );
           }
-        } catch (_) {}
+        } catch (e) { CompilerLogger.debug('isSetter check failed (PrefixedIdentifier): $e'); }
       }
     }
 
@@ -413,9 +414,7 @@ mixin ExpressionVisitor on RobloxVisitorBase {
     final property = node.propertyName;
     final element = property.element;
 
-    print(
-      "DEBUG: PropertyAccess: ${node.toSource()}, element: ${element?.runtimeType}, string: $element",
-    );
+    CompilerLogger.debug("PropertyAccess: ${node.toSource()}, element: ${element?.runtimeType}");
 
     if (element != null &&
         element.toString().contains('PropertyAccessorElement')) {
@@ -429,7 +428,7 @@ mixin ExpressionVisitor on RobloxVisitorBase {
             useColon: true,
           );
         }
-      } catch (_) {}
+      } catch (e) { CompilerLogger.debug('isGetter check failed (PropertyAccess): $e'); }
     }
 
     final propertyName = node.propertyName.name;
@@ -467,9 +466,7 @@ mixin ExpressionVisitor on RobloxVisitorBase {
     final property = node.identifier;
     final element = property.element;
 
-    print(
-      "DEBUG: PrefixedIdentifier: ${node.toSource()}, element: ${element?.runtimeType}, string: $element",
-    );
+    CompilerLogger.debug("PrefixedIdentifier: ${node.toSource()}, element: ${element?.runtimeType}");
 
     if (element != null &&
         element.toString().contains('PropertyAccessorElement')) {
@@ -483,7 +480,7 @@ mixin ExpressionVisitor on RobloxVisitorBase {
             useColon: true,
           );
         }
-      } catch (_) {}
+      } catch (e) { CompilerLogger.debug('isGetter check failed (PrefixedIdentifier): $e'); }
     }
 
     final propertyName = property.name;
@@ -532,16 +529,14 @@ mixin ExpressionVisitor on RobloxVisitorBase {
 
     bool isStaticMember = false;
     if (element != null) {
-      final str = element.toString();
       isStaticMember =
-          str.contains('static') ||
           (element is PropertyAccessorElement && element.isStatic) ||
           (element is VariableElement && element.isStatic) ||
           (element is FieldElement && element.isStatic);
       try {
         final dynamic dynamicElement = element;
         if (dynamicElement.isStatic == true) isStaticMember = true;
-      } catch (_) {}
+      } catch (e) { CompilerLogger.debug('isStatic check failed (SimpleIdentifier): $e'); }
     }
 
     if (isStaticMember && currentClassName != null) {

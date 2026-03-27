@@ -37,6 +37,9 @@ class RobloxCompiler {
     );
 
     final visitor = RobloxVisitor();
+
+    visitor.reset();
+
     visitor.projectRoot = p.normalize(
       p.absolute(context.contextRoot.root.path),
     );
@@ -159,7 +162,6 @@ class RobloxCompiler {
 
     await outputFile.writeAsString(finalLuauCode);
 
-    // Generate RuntimeLib
     final runtimeDirPath = p.join(outDirPath, "include");
     Directory(runtimeDirPath).createSync(recursive: true);
     final runtimeFile = File(p.join(runtimeDirPath, "RuntimeLib.luau"));

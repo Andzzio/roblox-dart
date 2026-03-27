@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/element.dart';
+import 'package:roblox_dart/compiler/compiler_logger.dart';
 import 'package:roblox_dart/compiler/visitor/roblox_visitor_base.dart';
 import 'package:roblox_dart/luau/declaration/luau_class.dart';
 import 'package:roblox_dart/luau/declaration/luau_constructor.dart';
@@ -152,7 +153,7 @@ mixin ClassVisitor on RobloxVisitorBase {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) { CompilerLogger.debug('Supertype introspection failed for $className: $e'); }
 
     final List<LuauNode> luauBody = [];
 
@@ -164,7 +165,7 @@ mixin ClassVisitor on RobloxVisitorBase {
         } catch (_) {
           try {
             mixinName = (mixin as dynamic).name2.lexeme;
-          } catch (_) {}
+          } catch (e) { CompilerLogger.debug('Mixin name2 fallback failed: $e'); }
         }
         final mixinElement = mixin.element;
         if (mixinElement is MixinElement) {
