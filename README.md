@@ -60,23 +60,41 @@ main()
 dart pub global activate --source path /path/to/roblox-dart
 ```
 
-Make sure `~/.pub-cache/bin` is in your PATH:
+Make sure the pub cache `bin` folder is in your PATH:
 
+**macOS / Linux** — add to `~/.bashrc` or `~/.zshrc`:
 ```bash
-# bash/zsh — add to ~/.bashrc or ~/.zshrc
 export PATH="$HOME/.pub-cache/bin:$PATH"
+```
+
+**Windows (PowerShell)** — run once, then restart the terminal:
+```powershell
+$env:PATH += ";$env:USERPROFILE\.pub-cache\bin"
+# To make it permanent:
+[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";$env:USERPROFILE\.pub-cache\bin", "User")
+```
+
+**Windows (Command Prompt)**:
+```cmd
+setx PATH "%PATH%;%USERPROFILE%\.pub-cache\bin"
 ```
 
 ---
 
 ## Quick start
 
+**macOS / Linux / Git Bash:**
 ```bash
-# Create a new project
 mkdir my-game && cd my-game
 roblox-dart init
+roblox-dart watch
+```
 
-# Start compiling
+**Windows (PowerShell / Command Prompt):**
+```powershell
+mkdir my-game
+cd my-game
+roblox-dart init
 roblox-dart watch
 ```
 
