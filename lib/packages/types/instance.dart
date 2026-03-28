@@ -9,7 +9,7 @@ class Instance {
   external Instance waitForChild(String name, [double? timeOut]);
   external Instance clone();
   external bool isA(String className);
-  external List<Instance> getChilder();
+  external List<Instance> getChildren();
   external List<Instance> getDescendants();
   external String getFullName();
   external bool isDescendantOf(Instance ancestor);
