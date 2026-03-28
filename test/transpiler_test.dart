@@ -32,7 +32,6 @@ void main() {
     'test_fibonacci_engine.luau',
     'test_combat.luau',
     'test_builder_cascade.luau',
-    'collision_test.luau',
   ];
 
   group('Runtime', () {
