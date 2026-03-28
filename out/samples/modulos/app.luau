@@ -1,7 +1,7 @@
-local _RD = require((script.Parent :: any):WaitForChild("include"):WaitForChild("RuntimeLib"))
+local _RD = require((script.Parent.Parent.Parent :: any):WaitForChild("include"):WaitForChild("RuntimeLib"))
 local main
 
-local math_utils = require(_RD.import(script, "Parent", "modulos", "math_utils"))
+local math_utils = require(_RD.import(script, "Parent", "math_utils"))
 local add = math_utils.add
 local Calculator = math_utils.Calculator
 
@@ -10,11 +10,9 @@ function main()
 	local result = add(10, 20)
 
 	print(`Sum: {result}`)
-
 	local product = Calculator.multiply(5, 5)
 
 	print(`Product: {product}`)
-
 end
 
 main()

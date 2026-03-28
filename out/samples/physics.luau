@@ -18,6 +18,11 @@ Vector2D.__newindex = function(self, key, value)
 	end
 end
 
+Vector2D.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "Vector2D"
+end
+
 function Vector2D.new(x, y)
 	local self = setmetatable({}, Vector2D)
 
@@ -43,6 +48,11 @@ Particle.__newindex = function(self, key, value)
 	else
 		rawset(self, key, value)
 	end
+end
+
+Particle.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "Particle"
 end
 
 function Particle.new(id, startX: number, startY: number, velocity)
@@ -87,6 +97,11 @@ BouncingParticle.__newindex = function(self, key, value)
 	else
 		rawset(self, key, value)
 	end
+end
+
+BouncingParticle.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "BouncingParticle"
 end
 
 function BouncingParticle.new(id, startX, startY, velocity, bounds)
@@ -140,6 +155,11 @@ PhysicsWorld.__newindex = function(self, key, value)
 	else
 		rawset(self, key, value)
 	end
+end
+
+PhysicsWorld.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "PhysicsWorld"
 end
 
 function PhysicsWorld.new()

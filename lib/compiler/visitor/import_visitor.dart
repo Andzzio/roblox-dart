@@ -78,12 +78,14 @@ mixin ImportVisitor on RobloxVisitorBase {
         final names = importedLibrary.exportNamespace.definedNames2.keys;
 
         for (var name in names) {
-          if (name != varName && !name.startsWith('_')) {
+          if (name != varName && !name.startsWith('_') && !name.endsWith('=')) {
             output += "local $name = $varName.$name\n";
           }
         }
       } else {
-        CompilerLogger.debug("No se pudo resolver la librería importada para '$varName' en análisis estático.");
+        CompilerLogger.debug(
+          "No se pudo resolver la librería importada para '$varName' en análisis estático.",
+        );
       }
     }
 
@@ -146,7 +148,9 @@ mixin ImportVisitor on RobloxVisitorBase {
         }
       }
     } catch (e) {
-      CompilerLogger.debug("Fallo al extraer las variables exportadas de '$varName': $e");
+      CompilerLogger.debug(
+        "Fallo al extraer las variables exportadas de '$varName': $e",
+      );
     }
 
     return LuauVariableDeclaration(

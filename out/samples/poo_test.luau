@@ -1,17 +1,34 @@
 local main
 
 local Entity = {}
-Entity.__index = Entity
+Entity.__index = function(self, key)
+	local getter = Entity["get_" .. tostring(key)]
+	if getter then
+		return getter(self)
+	end
+	return Entity[key]
+end
+
+Entity.__newindex = function(self, key, value)
+	local setter = Entity["set_" .. tostring(key)]
+	if setter then
+		setter(self, value)
+	else
+		rawset(self, key, value)
+	end
+end
+
+Entity.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "Entity"
+end
 
 function Entity.new(name, namedArgs: any)
 	local self = setmetatable({}, Entity)
 
 	local hp = if namedArgs and namedArgs.hp ~= nil then namedArgs.hp else 100
-
 	self.name = name
-
 	self.hp = hp
-
 
 	return self
 end
@@ -28,13 +45,31 @@ end
 
 function Entity:takeDamage(damage)
 	self.hp -= damage
-
 	print(`{self.name} received {damage} of damage. HP remaining: {self.hp}`)
-
 end
 
 local Player = setmetatable({}, Entity)
-Player.__index = Player
+Player.__index = function(self, key)
+	local getter = Player["get_" .. tostring(key)]
+	if getter then
+		return getter(self)
+	end
+	return Player[key]
+end
+
+Player.__newindex = function(self, key, value)
+	local setter = Player["set_" .. tostring(key)]
+	if setter then
+		setter(self, value)
+	else
+		rawset(self, key, value)
+	end
+end
+
+Player.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "Player"
+end
 
 function Player.new(name, namedArgs: any)
 	local self = Entity.new(name, {
@@ -43,25 +78,19 @@ function Player.new(name, namedArgs: any)
 	setmetatable(self, Player)
 
 	local level = if namedArgs and namedArgs.level ~= nil then namedArgs.level else 1
-
 	self.level = level
-
 
 	return self
 end
 
 function Player:takeDamage(damage)
 	print("The player is being attacked!")
-
 	Entity.takeDamage(self, damage)
-
 end
 
 function Player:levelUp()
 	self.level += 1
-
 	print(`¡{self.name} subió al nivel {self.level}!`)
-
 end
 
 function main()
@@ -73,11 +102,8 @@ function main()
 	})
 
 	pro:takeDamage(20)
-
 	boss:takeDamage(50)
-
 	pro:levelUp()
-
 end
 
 main()

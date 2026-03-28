@@ -20,6 +20,11 @@ SequenceResult.__newindex = function(self, key, value)
 	end
 end
 
+SequenceResult.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "SequenceResult"
+end
+
 function SequenceResult.new(sequenceName, data)
 	local self = setmetatable({}, SequenceResult)
 

@@ -1,4 +1,7 @@
-local function div(a: number, b: number): number
+local div
+local main
+
+function div(a: number, b: number): number
 
 	if b == 0 then
 
@@ -10,13 +13,11 @@ local function div(a: number, b: number): number
 
 end
 
-local function main()
+function main()
 
 	local result: number = div(10, 2)
 
 	print(result)
-
 end
 
 main()
-

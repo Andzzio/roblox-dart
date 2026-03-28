@@ -1,4 +1,6 @@
-local function main()
+local main
+
+function main()
 
 	local map: any = {
 		["name"] = "Andre",
@@ -12,15 +14,11 @@ local function main()
 	}
 
 	print(map["name"])
-
 	print(map["age"])
-
 	print(map["isStudent"])
-
-	for _, course in ipairs (map["courses"]) do
+	for _, course in pairs(map["courses"]) do
 
 		print(course)
-
 	end
 
 end

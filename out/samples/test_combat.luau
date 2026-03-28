@@ -18,6 +18,11 @@ Character.__newindex = function(self, key, value)
 	end
 end
 
+Character.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "Character"
+end
+
 function Character.new(name: string, maxHealth: number)
 	local self = setmetatable({}, Character)
 
@@ -84,6 +89,11 @@ Warrior.__newindex = function(self, key, value)
 	else
 		rawset(self, key, value)
 	end
+end
+
+Warrior.__tostring = function(self)
+	if self.toString then return self:toString() end
+	return "Warrior"
 end
 
 function Warrior.new(name, maxHealth, armor)

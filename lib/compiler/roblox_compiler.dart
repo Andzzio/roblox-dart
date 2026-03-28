@@ -45,10 +45,12 @@ class RobloxCompiler {
     );
     visitor.currentFilePath = normalizedPath;
 
-    final testDir = p.join(Directory.current.path, 'test');
-    final relativeToTest = p.relative(normalizedPath, from: testDir);
+    final relativeFilePath = p.relative(
+      normalizedPath,
+      from: Directory.current.path,
+    );
     final levels = p
-        .split(p.dirname(relativeToTest))
+        .split(p.dirname(relativeFilePath))
         .where((s) => s != '.')
         .length;
     final parentPrefix = List.filled(levels + 1, 'Parent').join('.');
@@ -150,7 +152,7 @@ class RobloxCompiler {
 
     final String relativePath = p.relative(
       file.path,
-      from: p.join(Directory.current.path, 'test'),
+      from: Directory.current.path,
     );
     final String luauRelativePath = relativePath.replaceAll(".dart", ".luau");
     final String outDirPath = p.join(Directory.current.path, "out");

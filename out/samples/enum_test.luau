@@ -6,7 +6,7 @@ do
 		__tostring = function(self) return self._name end
 	}
 	local function _create(cname, index)
-		local obj = { index = index, _name = "Color." .. cname }
+		local obj = { index = index, name = cname, _name = "Color." .. cname }
 		setmetatable(obj, _mt)
 		table.freeze(obj)
 		return obj
@@ -26,7 +26,6 @@ end
 function main()
 
 	print(Color.red)
-
 end
 
 main()

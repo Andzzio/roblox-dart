@@ -7,20 +7,10 @@ local main
 
 function evenNumbers(limit: number)
 
-	do
+	for i = 0, limit do
+		if i % 2 == 0 then
 
-		local i: number = 0
-
-		while i <= limit do
-
-			if i % 2 == 0 then
-
-				print(i)
-
-			end
-
-			i += 1
-
+			print(i)
 		end
 
 	end
@@ -34,9 +24,7 @@ function oddNumbers(limit: number)
 	while i <= limit do
 
 		print(i)
-
 		i += 2
-
 	end
 
 end
@@ -50,11 +38,9 @@ function multiplesOf3(limit: number)
 		if i % 3 == 0 then
 
 			print(i)
-
 		end
 
 		i += 1
-
 	until not (i <= limit)
 
 end
@@ -72,7 +58,6 @@ function listTest()
 	for _, number in ipairs(numbers) do
 
 		print(number)
-
 	end
 
 end
@@ -80,7 +65,6 @@ end
 function fact(namedArgs: any): number
 
 	local max: number = if namedArgs and namedArgs.max ~= nil then namedArgs.max else 10
-
 	if max == 0 then
 
 		return 1
@@ -96,17 +80,12 @@ end
 function main()
 
 	evenNumbers(10)
-
 	oddNumbers(10)
-
 	multiplesOf3(10)
-
 	listTest()
-
 	print(fact({
 		["max"] = 5,
 	}))
-
 end
 
 main()
