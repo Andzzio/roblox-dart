@@ -2,6 +2,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:roblox_dart/compiler/compiler_logger.dart';
 import 'package:roblox_dart/compiler/macros/list_macros.dart';
+import 'package:roblox_dart/compiler/macros/macro_resolver.dart';
 import 'package:roblox_dart/compiler/macros/string_macros.dart';
 import 'package:roblox_dart/compiler/macros/type_macros.dart';
 import 'package:roblox_dart/compiler/visitor/roblox_visitor_base.dart';
@@ -85,7 +86,9 @@ mixin ExpressionVisitor on RobloxVisitorBase {
               useColon: isInstance,
             );
           }
-        } catch (e) { CompilerLogger.debug('isSetter check failed (SimpleIdentifier): $e'); }
+        } catch (e) {
+          CompilerLogger.debug('isSetter check failed (SimpleIdentifier): $e');
+        }
       }
     }
 
@@ -96,15 +99,19 @@ mixin ExpressionVisitor on RobloxVisitorBase {
         try {
           final dynamic dynElem = element;
           if (dynElem.isSetter == true) {
-            final targetLego = left.target?.accept(this);
-            return LuauCallExpression(
-              target: targetLego,
-              methodName: "set_${property.name}",
-              arguments: [right],
-              useColon: true,
-            );
+            if (!MacroResolver.isRobloxType(left.target?.staticType)) {
+              final targetLego = left.target?.accept(this);
+              return LuauCallExpression(
+                target: targetLego,
+                methodName: "set_${property.name}",
+                arguments: [right],
+                useColon: true,
+              );
+            }
           }
-        } catch (e) { CompilerLogger.debug('isSetter check failed (PropertyAccess): $e'); }
+        } catch (e) {
+          CompilerLogger.debug('isSetter check failed (PropertyAccess): $e');
+        }
       }
     }
 
@@ -115,15 +122,19 @@ mixin ExpressionVisitor on RobloxVisitorBase {
         try {
           final dynamic dynElem = element;
           if (dynElem.isSetter == true) {
-            final targetLego = left.prefix.accept(this);
-            return LuauCallExpression(
-              target: targetLego,
-              methodName: "set_${property.name}",
-              arguments: [right],
-              useColon: true,
-            );
+            if (!MacroResolver.isRobloxType(left.prefix.staticType)) {
+              final targetLego = left.prefix.accept(this);
+              return LuauCallExpression(
+                target: targetLego,
+                methodName: "set_${property.name}",
+                arguments: [right],
+                useColon: true,
+              );
+            }
           }
-        } catch (e) { CompilerLogger.debug('isSetter check failed (PrefixedIdentifier): $e'); }
+        } catch (e) {
+          CompilerLogger.debug('isSetter check failed (PropertyAccess): $e');
+        }
       }
     }
 
@@ -287,6 +298,16 @@ mixin ExpressionVisitor on RobloxVisitorBase {
         }
 
         if (resultNode == null) {
+          final result = MacroResolver.resolveMethod(
+            targetExpression.staticType,
+            methodName,
+            targetLego?.emit() ?? (node.isCascaded ? "_c" : "self"),
+            args,
+          );
+          if (result != null) resultNode = LuauLiteral(value: result);
+        }
+
+        if (resultNode == null) {
           if (targetExpression is Identifier) {
             final element = targetExpression.element;
 
@@ -297,21 +318,9 @@ mixin ExpressionVisitor on RobloxVisitorBase {
             }
           }
 
-          const robloxNamespaces = {
-            "math",
-            "table",
-            "string",
-            "coroutine",
-            "task",
-            "Vector3",
-            "Vector2",
-            "CFrame",
-            "Color3",
-            "UDim2",
-            "Instance",
-          };
+          const luauBuiltins = {"math", "table", "string", "coroutine", "task"};
 
-          if (isStaticClassAccess || robloxNamespaces.contains(targetName)) {
+          if (isStaticClassAccess || luauBuiltins.contains(targetName)) {
             isColon = false;
           } else {
             isColon = true;
@@ -414,7 +423,25 @@ mixin ExpressionVisitor on RobloxVisitorBase {
     final property = node.propertyName;
     final element = property.element;
 
-    CompilerLogger.debug("PropertyAccess: ${node.toSource()}, element: ${element?.runtimeType}");
+    CompilerLogger.debug(
+      "PropertyAccess: ${node.toSource()}, element: ${element?.runtimeType}",
+    );
+
+    if (MacroResolver.isRobloxType(node.target?.staticType)) {
+      final result = MacroResolver.resolveProperty(
+        node.target?.staticType,
+        property.name,
+        target?.emit() ?? '_c',
+      );
+      if (result != null) {
+        if (node.isNullAware) {
+          return LuauLiteral(
+            value: "(if ${target!.emit()} ~= nil then $result else nil)",
+          );
+        }
+        return LuauLiteral(value: result);
+      }
+    }
 
     if (element != null &&
         element.toString().contains('PropertyAccessorElement')) {
@@ -428,7 +455,9 @@ mixin ExpressionVisitor on RobloxVisitorBase {
             useColon: true,
           );
         }
-      } catch (e) { CompilerLogger.debug('isGetter check failed (PropertyAccess): $e'); }
+      } catch (e) {
+        CompilerLogger.debug('isGetter check failed (PropertyAccess): $e');
+      }
     }
 
     final propertyName = node.propertyName.name;
@@ -466,7 +495,20 @@ mixin ExpressionVisitor on RobloxVisitorBase {
     final property = node.identifier;
     final element = property.element;
 
-    CompilerLogger.debug("PrefixedIdentifier: ${node.toSource()}, element: ${element?.runtimeType}");
+    CompilerLogger.debug(
+      "PrefixedIdentifier: ${node.toSource()}, element: ${element?.runtimeType}",
+    );
+
+    if (MacroResolver.isRobloxType(node.prefix.staticType)) {
+      final result = MacroResolver.resolveProperty(
+        node.prefix.staticType,
+        property.name,
+        targetLego?.emit() ?? '_c',
+      );
+      if (result != null) {
+        return LuauLiteral(value: result);
+      }
+    }
 
     if (element != null &&
         element.toString().contains('PropertyAccessorElement')) {
@@ -480,7 +522,9 @@ mixin ExpressionVisitor on RobloxVisitorBase {
             useColon: true,
           );
         }
-      } catch (e) { CompilerLogger.debug('isGetter check failed (PrefixedIdentifier): $e'); }
+      } catch (e) {
+        CompilerLogger.debug('isGetter check failed (PrefixedIdentifier): $e');
+      }
     }
 
     final propertyName = property.name;
@@ -536,7 +580,9 @@ mixin ExpressionVisitor on RobloxVisitorBase {
       try {
         final dynamic dynamicElement = element;
         if (dynamicElement.isStatic == true) isStaticMember = true;
-      } catch (e) { CompilerLogger.debug('isStatic check failed (SimpleIdentifier): $e'); }
+      } catch (e) {
+        CompilerLogger.debug('isStatic check failed (SimpleIdentifier): $e');
+      }
     }
 
     if (isStaticMember && currentClassName != null) {

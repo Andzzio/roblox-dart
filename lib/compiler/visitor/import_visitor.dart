@@ -30,11 +30,35 @@ mixin ImportVisitor on RobloxVisitorBase {
     }
     importedNames.add(varName);
 
-    if (uri.startsWith('package:roblox_dart/services.dart')) {
-      return LuauVariableDeclaration(
-        name: varName,
-        initializer: LuauLiteral(value: 'game:GetService("$varName")'),
-      );
+    if (uri == 'package:roblox_dart/services.dart') {
+      final List<String> serviceNames = [];
+
+      final showCombinators = node.combinators.whereType<ShowCombinator>();
+      if (showCombinators.isNotEmpty) {
+        for (final c in showCombinators) {
+          serviceNames.addAll(c.shownNames.map((n) => n.name));
+        }
+      } else {
+        final lib = node.libraryImport?.importedLibrary;
+        if (lib != null) {
+          serviceNames.addAll(
+            lib.exportNamespace.definedNames2.keys.where(
+              (n) => !n.startsWith('_') && !n.endsWith('='),
+            ),
+          );
+        }
+      }
+
+      final buffer = StringBuffer();
+      for (final name in serviceNames) {
+        final serviceName = name[0].toUpperCase() + name.substring(1);
+        buffer.writeln('local $name = game:GetService("$serviceName")');
+      }
+      return LuauLiteral(value: buffer.toString().trim());
+    }
+
+    if (uri.startsWith('package:roblox_dart/')) {
+      return null;
     }
 
     String luauPath;

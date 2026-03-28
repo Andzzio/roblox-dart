@@ -10,23 +10,17 @@ class Vector3 {
   external static Vector3 get xAxis;
   external static Vector3 get yAxis;
   external static Vector3 get zAxis;
+  external double get magnitude;
+  external Vector3 get unit;
 
   external Vector3 lerp(Vector3 goal, double alpha);
   external double dot(Vector3 other);
   external Vector3 cross(Vector3 other);
 
-  external double get magnitude;
-  external Vector3 get unit;
-}
-
-class Instance {
-  external String name;
-  external String className;
-  external dynamic parent;
-
-  external Instance(String className, [dynamic parent]);
-
-  external void destroy();
-  external Instance? waitForChild(String childName, [double? timeOut]);
-  external Instance clone();
+  external bool fuzzyEq(Vector3 other, [double epsilon]);
+  external Vector3 abs();
+  external Vector3 ceil();
+  external Vector3 floor();
+  external Vector3 max(Vector3 other);
+  external Vector3 min(Vector3 other);
 }

@@ -7,8 +7,9 @@ import 'package:path/path.dart' as p;
 
 class RobloxCompiler {
   final AnalysisContextCollection collection;
+  final String? sourceRoot;
 
-  RobloxCompiler({required String projectRoot})
+  RobloxCompiler({required String projectRoot, this.sourceRoot})
     : collection = AnalysisContextCollection(
         includedPaths: [
           p.normalize(p.absolute(projectRoot)),
@@ -45,17 +46,22 @@ class RobloxCompiler {
     );
     visitor.currentFilePath = normalizedPath;
 
-    final relativeFilePath = p.relative(
-      normalizedPath,
-      from: Directory.current.path,
-    );
-    final levels = p
-        .split(p.dirname(relativeFilePath))
-        .where((s) => s != '.')
-        .length;
-    final parentPrefix = List.filled(levels + 1, 'Parent').join('.');
-    visitor.runtimePath =
-        '(script.$parentPrefix :: any):WaitForChild("include"):WaitForChild("RuntimeLib")';
+    if (sourceRoot != null) {
+      visitor.runtimePath =
+          'game:GetService("ReplicatedStorage"):WaitForChild("include"):WaitForChild("RuntimeLib")';
+    } else {
+      final relativeFilePath = p.relative(
+        normalizedPath,
+        from: Directory.current.path,
+      );
+      final levels = p
+          .split(p.dirname(relativeFilePath))
+          .where((s) => s != '.')
+          .length;
+      final parentPrefix = List.filled(levels + 1, 'Parent').join('.');
+      visitor.runtimePath =
+          '(script.$parentPrefix :: any):WaitForChild("include"):WaitForChild("RuntimeLib")';
+    }
 
     for (var dartNode in astRoot.declarations) {
       if (dartNode is ClassDeclaration) {
@@ -83,7 +89,11 @@ class RobloxCompiler {
     }
 
     String finalLuauCode = "";
-    if (astRoot.directives.any((d) => d is ImportDirective)) {
+    if (astRoot.directives.any(
+      (d) =>
+          d is ImportDirective &&
+          !(d.uri.stringValue?.startsWith('package:roblox_dart/') ?? false),
+    )) {
       finalLuauCode += "local _RD = require(${visitor.runtimePath!})\n";
     }
 
@@ -150,10 +160,8 @@ class RobloxCompiler {
       finalLuauCode += "main()\n";
     }
 
-    final String relativePath = p.relative(
-      file.path,
-      from: Directory.current.path,
-    );
+    final String from = sourceRoot ?? Directory.current.path;
+    final String relativePath = p.relative(file.path, from: from);
     final String luauRelativePath = relativePath.replaceAll(".dart", ".luau");
     final String outDirPath = p.join(Directory.current.path, "out");
     final String outPath = p.join(outDirPath, luauRelativePath);

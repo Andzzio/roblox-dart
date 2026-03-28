@@ -1,10 +1,13 @@
 name: roblox_dart
-description: A Dart-to-Luau transpiler for Roblox game development.
-version: 1.0.0
-environment:
-  sdk: ^3.11.1
+description: Dart-to-Luau transpiler for Roblox. Write Dart, compile to Luau with full Roblox API types and Rojo integration.
+version: 0.1.0
+homepage: https://github.com/Andzzio/roblox-dart
+repository: https://github.com/Andzzio/roblox-dart
+issue_tracker: https://github.com/Andzzio/roblox-dart/issues
 
-# Add regular dependencies here.
+environment:
+  sdk: ^3.0.0
+
 dependencies:
   analyzer: ^12.0.0
   args: ^2.7.0
@@ -13,3 +16,6 @@ dependencies:
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.25.6
+
+executables:
+  roblox-dart: roblox_dart
