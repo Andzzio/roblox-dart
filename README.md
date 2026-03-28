@@ -1,51 +1,255 @@
-# 🎯 roblox_dart
+# roblox-dart
 
-**Because I really, really hate Luau.**
+**Write Dart. Ship Luau.**
 
-I love building on Roblox, but let's be honest: Luau can be a pain. I wanted the strict typing, the modern syntax, and the sheer developer joy that comes with **Dart**, so I started building `roblox_dart`. 
+Because Luau is fine, but Dart is home.
 
-This isn't an enterprise product or a production-ready suite. It's a personal mission to make Dart a viable option for Roblox development. It's a work-in-progress, a bit experimental, and born out of pure Luau-induced frustration.
+`roblox-dart` is a Dart-to-Luau transpiler for Roblox development. Write your game logic in Dart — with real classes, null safety, and a proper type system — and compile it to idiomatic Luau that runs natively in Roblox Studio.
 
----
+Inspired by [roblox-ts](https://roblox-ts.com). Built for Dart developers who want to feel at home on Roblox.
 
-## 🛠️ What's working so far?
-
-I've been teaching this transpiler how to handle the stuff we actually use every day. It's not just about changing syntax; it's about semantic parity.
-
-### 🏗️ Proper OOP in a Classless World
-Luau doesn't have classes—at least not real ones. `roblox_dart` maps Dart's rich class system to Luau's metatables.
-- **Inheritance:** We've got `extends` and `super()` working, including method overrides that actually resolve correctly.
-- **Mixins:** Using `with` to keep code modular. It's like Lego for your logic, without the Luau boilerplate.
-- **Static Members:** Handled with a reliable initialization order so you don't run into "nil" errors when accessing class-level fields.
-- **Factory Constructors:** Implementing patterns like Singletons is actually clean now.
-
-### 📦 A Sane Module System
-Managing `require()` calls in Luau and keeping track of relative paths is a headache. 
-- **Automatic Imports:** The transpiler converts Dart `import` directives into fully resolved Luau `require()` calls.
-- **Destructuring:** It handles named imports intelligently, pulling only what you need into the local scope.
-- **Self-Generating Exports:** Every `.dart` file automatically becomes a self-contained module with a clean export table at the end.
-
-### ⚡ Safety & Type Integrity
-- **Sound Null Safety:** Luau's "maybe-nil" variables are the source of 90% of crashes. By using Dart's strict null-safety, we catch those errors at the transpilation step.
-- **Named Parameters:** First-class support for `required` and optional named parameters, guarded by Luau assertion patterns.
+> **⚠️ Early development.** roblox-dart is functional but not production-ready. APIs will change, edge cases exist, and not every Dart or Roblox feature is supported yet. Use it for personal projects, experiments, and contributions — not for shipped games. Feedback and PRs are very welcome.
 
 ---
 
-## 🧠 The Architecture
+## How it works
 
-It's not magic—it's just a lot of AST (Abstract Syntax Tree) walking.
-I use the official Dart `analyzer` to pull apart the code and a **Visitor Pattern** to put it back together as idiomatic Luau. 
+```dart
+// src/server/main.server.dart
+import 'package:roblox_dart/services.dart' show workspace;
+import 'package:roblox_dart/roblox.dart';
 
-1. **The Analysis Phase:** We use Dart's own compiler tools to understand the code's structure, types, and directives.
-2. **The Transformation Phase:** This is where the translation happens—mapping Dart syntactic sugar into Luau-equivalent patterns.
-3. **The Synthesis Phase:** Generating clean, human-readable Luau code that stays close to your original logic.
+void main() {
+  workspace.gravity = 0;
 
-## 🏠 The End Goal
+  final part = Instance("Part");
+  part.parent = workspace;
 
-More than anything, I just want to feel **comfortable**.
+  final pos = Vector3(0, 10, 0);
+  final goal = Vector3(0, 0, 0);
+  final lerped = pos.lerp(goal, 0.5);
+}
+```
 
-I want to build on Roblox without losing the safety of Dart’s types or the elegance of its OOP. The goal is to create an environment where I can write code that feels "right"—where Null Safety catches my mistakes before they happen, and where classes actually behave like classes. It's about bringing that sense of home into the Roblox world.
+Compiles to:
+
+```lua
+local workspace = game:GetService("Workspace")
+
+function main()
+  workspace.Gravity = 0
+
+  local part = Instance.new("Part")
+  part.Parent = workspace
+
+  local pos = Vector3.new(0, 10, 0)
+  local goal = Vector3.new(0, 0, 0)
+  local lerped = pos:Lerp(goal, 0.5)
+end
+
+main()
+```
 
 ---
 
-_Built by someone who loves Dart and Roblox, but absolutely hates Luau._
+## Installation
+
+**Requirements:** [Dart SDK](https://dart.dev/get-dart) 3.0+, [Rojo](https://rojo.space) 7+
+
+```bash
+dart pub global activate --source path /path/to/roblox-dart
+```
+
+Make sure `~/.pub-cache/bin` is in your PATH:
+
+```bash
+# bash/zsh — add to ~/.bashrc or ~/.zshrc
+export PATH="$HOME/.pub-cache/bin:$PATH"
+```
+
+---
+
+## Quick start
+
+```bash
+# Create a new project
+mkdir my-game && cd my-game
+roblox-dart init
+
+# Start compiling
+roblox-dart watch
+```
+
+Then open Roblox Studio, connect Rojo, and start building.
+
+---
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `roblox-dart init` | Creates project structure, `default.project.json`, and runs `dart pub get` |
+| `roblox-dart watch` | Compiles all files in `src/` and watches for changes |
+| `roblox-dart translate -t <file>` | Translates a single Dart file to Luau |
+
+---
+
+## File conventions
+
+File naming determines the Roblox script type — same convention as roblox-ts:
+
+| File | Luau output | Roblox type |
+|------|-------------|-------------|
+| `foo.server.dart` | `foo.server.luau` | `Script` (server) |
+| `foo.client.dart` | `foo.client.luau` | `LocalScript` (client) |
+| `foo.dart` | `foo.luau` | `ModuleScript` |
+
+---
+
+## Project structure
+
+`roblox-dart init` generates this structure:
+
+```
+my-game/
+├── default.project.json   ← Rojo config
+├── pubspec.yaml
+├── src/
+│   ├── server/            → ServerScriptService
+│   ├── client/            → StarterPlayer.StarterPlayerScripts
+│   └── shared/            → ReplicatedStorage.shared
+└── out/                   ← compiled Luau (gitignored)
+    ├── include/           → ReplicatedStorage.include (RuntimeLib)
+    ├── server/
+    ├── client/
+    └── shared/
+```
+
+---
+
+## Roblox API
+
+### Services
+
+```dart
+import 'package:roblox_dart/services.dart' show workspace, players;
+
+workspace.gravity = 0;
+final local = players.localPlayer;
+```
+
+### Types
+
+```dart
+import 'package:roblox_dart/roblox.dart';
+
+// Value types
+final v = Vector3(1, 2, 3);
+final mag = v.magnitude;        // → v.Magnitude
+final u = v.unit;               // → v.Unit
+final d = v.dot(other);         // → v:Dot(other)
+final l = v.lerp(goal, 0.5);    // → v:Lerp(goal, 0.5)
+final zero = Vector3.zero;      // → Vector3.zero
+
+final cf = CFrame(0, 5, 0);
+final color = Color3.fromRGB(255, 0, 0);
+final size = UDim2.fromScale(1, 0.5);
+
+// Instances
+final part = Instance("Part");
+part.parent = workspace;
+part.name = "MyPart";
+final child = part.findFirstChild("Handle");   // → part:FindFirstChild("Handle")
+part.destroy();                                 // → part:Destroy()
+```
+
+### Supported types
+
+| Type | Status |
+|------|--------|
+| `Vector3` | ✅ |
+| `CFrame` | ✅ |
+| `Color3` | ✅ |
+| `UDim2` | ✅ |
+| `Instance` | ✅ |
+| `BasePart` | ✅ |
+| `Humanoid` | ✅ |
+| `Workspace` | ✅ |
+| `Players` | ✅ |
+| `TweenService` | 🔜 |
+| `RemoteEvent` | 🔜 |
+| `RBXScriptSignal` | 🔜 |
+
+---
+
+## Language features
+
+| Feature | Status |
+|---------|--------|
+| Classes + inheritance | ✅ |
+| Mixins | ✅ |
+| Static members | ✅ |
+| Getters / setters | ✅ |
+| Factory constructors | ✅ |
+| Null safety (`?.`, `??`, `??=`) | ✅ |
+| Generics (basic) | ✅ |
+| Enums | ✅ |
+| Closures / lambdas | ✅ |
+| `async` / `await` | 🔜 |
+| Extension methods | 🔜 |
+
+---
+
+## Adding new Roblox types
+
+The type system is designed to scale. Adding a new type takes three steps:
+
+**1. Create the stub** (`lib/packages/types/tween_service.dart`):
+```dart
+import 'package:roblox_dart/packages/types/instance.dart';
+
+class TweenService extends Instance {
+  external factory TweenService();
+  external Tween create(Instance instance, TweenInfo tweenInfo, Map<String, dynamic> propertyTable);
+}
+```
+
+**2. Register it** (`lib/compiler/macros/roblox/roblox_macro_registry.dart`):
+```dart
+'TweenService': RobloxTypeMacro(),
+```
+
+**3. Export it** (`lib/services.dart`):
+```dart
+TweenService get tweenService => throw UnimplementedError('Transpiler only');
+```
+
+All methods automatically translate `camelCase` → `PascalCase` with the correct `:` or `.` separator. No extra mapping needed.
+
+---
+
+## Architecture
+
+```
+Dart source
+    ↓  analyzer (dart:analyzer)
+    AST
+    ↓  RobloxVisitor (visitor pattern)
+    ↓    ExpressionVisitor  → MacroResolver → RobloxMacroRegistry
+    ↓    StatementVisitor
+    ↓    ImportVisitor      → game:GetService() for services
+    ↓    ClassVisitor       → metatables + inheritance
+    Luau AST nodes
+    ↓  emit()
+    Luau source
+```
+
+---
+
+## Contributing
+
+Issues and PRs welcome at [github.com/Andzzio/roblox-dart](https://github.com/Andzzio/roblox-dart).
+
+---
+
+_Built by someone who loves Dart and Roblox, but prefers not to write Luau._
