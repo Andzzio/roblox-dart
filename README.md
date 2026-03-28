@@ -1,35 +1,50 @@
-# 🎯 Roblox-Dart
+# 🎯 roblox_dart
 
-An experimental **Dart-to-Luau** transpiler for the Roblox ecosystem.
+**Because I really, really hate Luau.**
 
-The main goal of this project is to allow developers to leverage Dart's strict typing and modern syntax, transforming the code into native and optimized Luau scripts ready to be consumed by Roblox Studio.
+I love building on Roblox, but let's be honest: Luau can be a pain. I wanted the strict typing, the modern syntax, and the sheer developer joy that comes with **Dart**, so I started building `roblox_dart`. 
 
-## 🚀 Current Status (Pro-Level POO & Modules)
+This isn't an enterprise product or a production-ready suite. It's a personal mission to make Dart a viable option for Roblox development. It's a work-in-progress, a bit experimental, and born out of pure Luau-induced frustration.
 
-This project has reached a significant level of maturity, supporting advanced Dart features:
+---
 
-### 🏗️ Object-Oriented Programming (OOP)
+## 🛠️ What's working so far?
 
-- **Full Inheritance:** Support for `extends` and `super()`.
-- **Mixins:** Using `with` for class composition.
-- **Static Members:** `static` fields and methods with correct initialization.
-- **Factory Constructors:** `factory` constructors for patterns like Singleton.
-- **Named Parameters:** Named parameters with `required` support (using `assert` in Luau).
-- **Getters & Setters:** Automatic redirection to private/protected members.
+I've been teaching this transpiler how to handle the stuff we actually use every day. It's not just about changing syntax; it's about semantic parity.
 
-### 📦 Module System
+### 🏗️ Proper OOP in a Classless World
+Luau doesn't have classes—at least not real ones. `roblox_dart` maps Dart's rich class system to Luau's metatables.
+- **Inheritance:** We've got `extends` and `super()` working, including method overrides that actually resolve correctly.
+- **Mixins:** Using `with` to keep code modular. It's like Lego for your logic, without the Luau boilerplate.
+- **Static Members:** Handled with a reliable initialization order so you don't run into "nil" errors when accessing class-level fields.
+- **Factory Constructors:** Implementing patterns like Singletons is actually clean now.
 
-- **Smart Imports:** Translation from `import` to `require()` with relative path support.
-- **Destructuring:** Automatic destructuring of imported members.
-- **Automatic Exporting:** Each `.dart` file generates a Luau export table.
+### 📦 A Sane Module System
+Managing `require()` calls in Luau and keeping track of relative paths is a headache. 
+- **Automatic Imports:** The transpiler converts Dart `import` directives into fully resolved Luau `require()` calls.
+- **Destructuring:** It handles named imports intelligently, pulling only what you need into the local scope.
+- **Self-Generating Exports:** Every `.dart` file automatically becomes a self-contained module with a clean export table at the end.
 
-## 🛠️ Architecture
+### ⚡ Safety & Type Integrity
+- **Sound Null Safety:** Luau's "maybe-nil" variables are the source of 90% of crashes. By using Dart's strict null-safety, we catch those errors at the transpilation step.
+- **Named Parameters:** First-class support for `required` and optional named parameters, guarded by Luau assertion patterns.
 
-The transpiler uses an advanced **Visitor Pattern** over the official Dart AST:
+---
 
-1. **Directives:** Processes `import` and `export`, generating module infrastructure.
-2. **Declarations:** Processes Classes and Functions, collecting members for exportation.
-3. **Emitter:** Generates clean Luau code, with zero decorative comments, production-ready.
+## 🧠 The Architecture
+
+It's not magic—it's just a lot of AST (Abstract Syntax Tree) walking.
+I use the official Dart `analyzer` to pull apart the code and a **Visitor Pattern** to put it back together as idiomatic Luau. 
+
+1. **The Analysis Phase:** We use Dart's own compiler tools to understand the code's structure, types, and directives.
+2. **The Transformation Phase:** This is where the translation happens—mapping Dart syntactic sugar into Luau-equivalent patterns.
+3. **The Synthesis Phase:** Generating clean, human-readable Luau code that stays close to your original logic.
+
+## 🏠 The End Goal
+
+More than anything, I just want to feel **comfortable**.
+
+I want to build on Roblox without losing the safety of Dart’s types or the elegance of its OOP. The goal is to create an environment where I can write code that feels "right"—where Null Safety catches my mistakes before they happen, and where classes actually behave like classes. It's about bringing that sense of home into the Roblox world.
 
 ---
 
