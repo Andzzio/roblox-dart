@@ -57,26 +57,31 @@ main()
 **Requirements:** [Dart SDK](https://dart.dev/get-dart) 3.0+, [Rojo](https://rojo.space) 7+
 
 ```bash
-dart pub global activate --source path /path/to/roblox-dart
+dart pub global activate roblox_dart
 ```
 
-Make sure the pub cache `bin` folder is in your PATH:
+Make sure the pub cache `bin` folder is in your system's **PATH** so you can run the `roblox-dart` command from anywhere.
 
-**macOS / Linux** — add to `~/.bashrc` or `~/.zshrc`:
+#### Windows
+On Windows, the pub cache is usually located at `%LOCALAPPDATA%\Pub\Cache\bin`.
+
+**PowerShell** (Run once, then restart the terminal):
+```powershell
+$env:PATH += ";$env:LOCALAPPDATA\Pub\Cache\bin"
+# To make it permanent:
+[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:LOCALAPPDATA\Pub\Cache\bin", "User")
+```
+
+**Command Prompt**:
+```cmd
+setx PATH "%PATH%;%LOCALAPPDATA%\Pub\Cache\bin"
+```
+
+#### macOS / Linux
+Add this to your `~/.bashrc`, `~/.zshrc`, or `~/.bash_profile`:
+
 ```bash
 export PATH="$HOME/.pub-cache/bin:$PATH"
-```
-
-**Windows (PowerShell)** — run once, then restart the terminal:
-```powershell
-$env:PATH += ";$env:USERPROFILE\.pub-cache\bin"
-# To make it permanent:
-[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";$env:USERPROFILE\.pub-cache\bin", "User")
-```
-
-**Windows (Command Prompt)**:
-```cmd
-setx PATH "%PATH%;%USERPROFILE%\.pub-cache\bin"
 ```
 
 ---

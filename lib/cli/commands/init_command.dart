@@ -53,6 +53,7 @@ class InitCommand extends Command {
     File(p.join(cwd, 'pubspec.yaml')).writeAsStringSync(
       'name: $projectName\n'
       'description: A Roblox game built with roblox-dart\n'
+      'publish_to: none\n'
       'version: 1.0.0\n'
       'environment:\n'
       '  sdk: ^3.0.0\n'
@@ -78,10 +79,13 @@ class InitCommand extends Command {
     print('Project "$projectName" created.');
 
     print('Running dart pub get...');
-    final result = await Process.run('dart', [
-      'pub',
-      'get',
-    ], workingDirectory: cwd);
+    final result = await Process.run(
+        'dart',
+        [
+          'pub',
+          'get',
+        ],
+        workingDirectory: cwd);
     if (result.exitCode != 0) {
       print('Warning: dart pub get failed:\n${result.stderr}');
     } else {
@@ -94,6 +98,23 @@ class InitCommand extends Command {
   String _getRobloxDartPath() {
     final scriptUri = Platform.script;
     final scriptPath = scriptUri.toFilePath();
+
+    // Search upwards for the directory containing roblox_dart's pubspec.yaml
+    Directory current = Directory(p.dirname(scriptPath));
+    while (true) {
+      final pubspec = File(p.join(current.path, 'pubspec.yaml'));
+      if (pubspec.existsSync()) {
+        final content = pubspec.readAsStringSync();
+        if (content.contains('name: roblox_dart')) {
+          return current.path;
+        }
+      }
+      final parent = current.parent;
+      if (parent.path == current.path) break;
+      current = parent;
+    }
+
+    // Fallback to the original logic if not found
     return p.normalize(p.join(p.dirname(scriptPath), '..'));
   }
 }
