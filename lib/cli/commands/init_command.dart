@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
+import 'package:roblox_dart/version.dart';
 
 class InitCommand extends Command {
   @override
@@ -101,17 +102,15 @@ class InitCommand extends Command {
     final scriptUri = Platform.script;
     final scriptPath = scriptUri.toFilePath();
 
-    // Search upwards for the directory containing roblox_dart's pubspec.yaml
     Directory current = Directory(p.dirname(scriptPath));
     while (true) {
       final pubspecFile = File(p.join(current.path, 'pubspec.yaml'));
       if (pubspecFile.existsSync()) {
         final content = pubspecFile.readAsStringSync();
         if (content.contains('name: roblox_dart')) {
-          // Extract version from pubspec
-          final versionMatch =
-              RegExp(r'^version:\s*([^\s]+)', multiLine: true).firstMatch(content);
-          final version = versionMatch?.group(1) ?? '0.1.0';
+          final versionMatch = RegExp(r'^version:\s*([^\s]+)', multiLine: true)
+              .firstMatch(content);
+          final version = versionMatch?.group(1) ?? packageVersion;
 
           return {
             'path': current.path,
@@ -126,7 +125,7 @@ class InitCommand extends Command {
 
     return {
       'path': p.normalize(p.join(p.dirname(scriptPath), '..')),
-      'version': '0.1.0',
+      'version': packageVersion,
     };
   }
 

@@ -16,3 +16,8 @@
 - Adaptive dependency detection: `init` now automatically chooses between `path` (Dev) and `version` (User) based on installation environment.
 - Dynamic version detection in `init` command based on internal pubspec.
 - Project cleanliness: ensured all generated projects avoid hardcoded cache paths.
+
+## 0.1.3
+
+- Internal refactor: version management moved to `lib/version.dart` for maximum reliability.
+- Robust fallback mechanism for version detection across all operating systems.
