@@ -10,3 +10,9 @@
 
 - Added 'publish_to: none' to generated projects to prevent pub.dev errors.
 - Improved path detection for roblox_dart dependency in 'init' command.
+
+## 0.1.2
+
+- Adaptive dependency detection: `init` now automatically chooses between `path` (Dev) and `version` (User) based on installation environment.
+- Dynamic version detection in `init` command based on internal pubspec.
+- Project cleanliness: ensured all generated projects avoid hardcoded cache paths.

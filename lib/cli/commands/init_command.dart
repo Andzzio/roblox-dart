@@ -48,7 +48,10 @@ class InitCommand extends Command {
       '}\n',
     );
 
-    final robloxDartPath = _getRobloxDartPath();
+    final info = _getRobloxDartInfo();
+    final robloxDartPath = info['path'];
+    final robloxDartVersion = info['version'];
+    final usePathDependency = !_isPubCachePath(robloxDartPath!);
 
     File(p.join(cwd, 'pubspec.yaml')).writeAsStringSync(
       'name: $projectName\n'
@@ -58,8 +61,7 @@ class InitCommand extends Command {
       'environment:\n'
       '  sdk: ^3.0.0\n'
       'dependencies:\n'
-      '  roblox_dart:\n'
-      '    path: $robloxDartPath\n',
+      '  roblox_dart: ${usePathDependency ? '\n    path: $robloxDartPath' : '^$robloxDartVersion'}\n',
     );
 
     File(p.join(cwd, '.gitignore')).writeAsStringSync(
@@ -95,18 +97,26 @@ class InitCommand extends Command {
     print('Run "roblox-dart watch" to start compiling.');
   }
 
-  String _getRobloxDartPath() {
+  Map<String, String> _getRobloxDartInfo() {
     final scriptUri = Platform.script;
     final scriptPath = scriptUri.toFilePath();
 
     // Search upwards for the directory containing roblox_dart's pubspec.yaml
     Directory current = Directory(p.dirname(scriptPath));
     while (true) {
-      final pubspec = File(p.join(current.path, 'pubspec.yaml'));
-      if (pubspec.existsSync()) {
-        final content = pubspec.readAsStringSync();
+      final pubspecFile = File(p.join(current.path, 'pubspec.yaml'));
+      if (pubspecFile.existsSync()) {
+        final content = pubspecFile.readAsStringSync();
         if (content.contains('name: roblox_dart')) {
-          return current.path;
+          // Extract version from pubspec
+          final versionMatch =
+              RegExp(r'^version:\s*([^\s]+)', multiLine: true).firstMatch(content);
+          final version = versionMatch?.group(1) ?? '0.1.0';
+
+          return {
+            'path': current.path,
+            'version': version,
+          };
         }
       }
       final parent = current.parent;
@@ -114,7 +124,16 @@ class InitCommand extends Command {
       current = parent;
     }
 
-    // Fallback to the original logic if not found
-    return p.normalize(p.join(p.dirname(scriptPath), '..'));
+    return {
+      'path': p.normalize(p.join(p.dirname(scriptPath), '..')),
+      'version': '0.1.0',
+    };
+  }
+
+  bool _isPubCachePath(String path) {
+    final normalized = p.normalize(path).toLowerCase();
+    return normalized.contains('pub-cache') ||
+        normalized.contains(p.join('pub', 'cache').toLowerCase()) ||
+        normalized.contains('global_packages');
   }
 }
