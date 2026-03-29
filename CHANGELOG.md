@@ -21,3 +21,9 @@
 
 - Internal refactor: version management moved to `lib/version.dart` for maximum reliability.
 - Robust fallback mechanism for version detection across all operating systems.
+
+## 0.1.4
+
+- Improved `init` command template: Now generates a complete Client-Server-Shared project structure.
+- Added `src/shared/shared.dart` and example communication between server and client in the default template.
+- Refined project bootstrapping for a more professional developer experience.

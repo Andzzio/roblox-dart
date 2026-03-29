@@ -70,12 +70,26 @@ class InitCommand extends Command {
       '.dart_tool/\n'
       'pubspec.lock\n',
     );
+
+    File(p.join(cwd, 'src/shared/shared.dart')).writeAsStringSync(
+      "String greet(String who) {\n"
+      "  return 'Hello, \$who, from roblox-dart!';\n"
+      "}\n",
+    );
+
     File(p.join(cwd, 'src/server/main.server.dart')).writeAsStringSync(
-      "import 'package:roblox_dart/services.dart' show workspace;\n"
+      "import '../shared/shared.dart';\n"
       "\n"
       "void main() {\n"
-      "  workspace.gravity = 0;\n"
-      "  print(\"Hello from roblox-dart!\");\n"
+      "  print(greet('server'));\n"
+      "}\n",
+    );
+
+    File(p.join(cwd, 'src/client/main.client.dart')).writeAsStringSync(
+      "import '../shared/shared.dart';\n"
+      "\n"
+      "void main() {\n"
+      "  print(greet('client'));\n"
       "}\n",
     );
 
