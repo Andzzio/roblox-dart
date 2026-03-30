@@ -8,6 +8,72 @@ import 'package:roblox_dart/luau/statement/luau_variable_declaration.dart';
 import 'package:roblox_dart/rojo/rojo_resolver.dart';
 
 mixin ImportVisitor on RobloxVisitorBase {
+  String _resolveImportPath(String uri) {
+    if (uri.startsWith('package:') || uri.startsWith('dart:')) {
+      final cleanUri = uri.split('/').last.replaceAll('.dart', '');
+      return '_RD.import(script, "Parent", "$cleanUri")';
+    }
+
+    if (currentFilePath != null &&
+        projectRoot != null &&
+        rojoResolver != null) {
+      final currentDir = p.dirname(currentFilePath!);
+      final importedSrcPath = p.normalize(p.join(currentDir, uri));
+
+      final srcRoot = p.join(projectRoot!, 'src');
+      final outRoot = p.join(projectRoot!, 'out');
+
+      String srcToOut(String srcPath) {
+        final rel = p.relative(srcPath, from: srcRoot);
+        return p.join(outRoot, rel.replaceAll('.dart', '.luau'));
+      }
+
+      final fromRbx =
+          rojoResolver!.getRbxPathFromFilePath(srcToOut(currentFilePath!));
+      final toRbx =
+          rojoResolver!.getRbxPathFromFilePath(srcToOut(importedSrcPath));
+
+      if (fromRbx != null &&
+          toRbx != null &&
+          fromRbx.isNotEmpty &&
+          toRbx.isNotEmpty) {
+        if (fromRbx.first == toRbx.first) {
+          final segments = RojoResolver.relative(fromRbx, toRbx);
+          final args = segments.map((s) => '"$s"').join(', ');
+          return '_RD.import(script, $args)';
+        } else {
+          final serviceName = toRbx.first;
+          final rootExpr = 'game:GetService("$serviceName")';
+          final restSegments = toRbx.skip(1).toList();
+
+          if (restSegments.isEmpty) {
+            return '_RD.import($rootExpr)';
+          } else {
+            final args = restSegments.map((s) => '"$s"').join(', ');
+            return '_RD.import($rootExpr, $args)';
+          }
+        }
+      }
+    }
+    final cleanUri = uri.replaceAll(RegExp(r'\.dart$'), '');
+    final parts = cleanUri.split('/');
+    final args = <String>[];
+
+    for (final part in parts) {
+      if (part == '..') {
+        args.add('"Parent"');
+      } else if (part != '.' && part.isNotEmpty) {
+        args.add('"$part"');
+      }
+    }
+
+    if (args.isEmpty) {
+      return 'script';
+    }
+
+    return '_RD.import(script, ${args.join(', ')})';
+  }
+
   @override
   LuauNode? visitImportDirective(ImportDirective node) {
     CompilerLogger.debug("Visiting ImportDirective: ${node.uri.stringValue}");
@@ -62,45 +128,8 @@ mixin ImportVisitor on RobloxVisitorBase {
       return null;
     }
 
-    String luauPath;
-    if (uri.startsWith('package:') || uri.startsWith('dart:')) {
-      final cleanUri = uri.split('/').last.replaceAll('.dart', '');
-      luauPath = '_RD.import(script, "Parent", "$cleanUri")';
-    } else {
-      if (currentFilePath != null &&
-          projectRoot != null &&
-          rojoResolver != null) {
-        final currentDir = p.dirname(currentFilePath!);
-        final importedSrcPath = p.normalize(p.join(currentDir, uri));
-
-        final srcRoot = p.join(projectRoot!, 'src');
-        final outRoot = p.join(projectRoot!, 'out');
-
-        String srcToOut(String srcPath) {
-          final rel = p.relative(srcPath, from: srcRoot);
-          return p.join(outRoot, rel.replaceAll('.dart', '.luau'));
-        }
-
-        final fromRbx =
-            rojoResolver!.getRbxPathFromFilePath(srcToOut(currentFilePath!));
-        final toRbx =
-            rojoResolver!.getRbxPathFromFilePath(srcToOut(importedSrcPath));
-
-        if (fromRbx != null && toRbx != null) {
-          final segments = RojoResolver.relative(fromRbx, toRbx);
-          final args = segments.map((s) => '"$s"').join(', ');
-          luauPath = '_RD.import(script, $args)';
-        } else {
-          final cleanUri = uri.replaceAll('.dart', '').replaceAll('/', '.');
-          luauPath = '_RD.import(script, "Parent", "$cleanUri")';
-        }
-      } else {
-        final cleanUri = uri.replaceAll('.dart', '').replaceAll('/', '.');
-        luauPath = '_RD.import(script, "Parent", "$cleanUri")';
-      }
-    }
-
-    String output = "local $varName = require($luauPath)\n";
+    final luauPath = _resolveImportPath(uri);
+    String output = "local $varName = $luauPath\n";
 
     if (node.prefix == null) {
       final libraryImportElement = node.libraryImport;
@@ -142,38 +171,7 @@ mixin ImportVisitor on RobloxVisitorBase {
     }
     importedNames.add(varName);
 
-    String luauPath;
-    if (currentFilePath != null &&
-        projectRoot != null &&
-        rojoResolver != null) {
-      final currentDir = p.dirname(currentFilePath!);
-      final importedSrcPath = p.normalize(p.join(currentDir, uri));
-
-      final srcRoot = p.join(projectRoot!, 'src');
-      final outRoot = p.join(projectRoot!, 'out');
-
-      String srcToOut(String srcPath) {
-        final rel = p.relative(srcPath, from: srcRoot);
-        return p.join(outRoot, rel.replaceAll('.dart', '.luau'));
-      }
-
-      final fromRbx =
-          rojoResolver!.getRbxPathFromFilePath(srcToOut(currentFilePath!));
-      final toRbx =
-          rojoResolver!.getRbxPathFromFilePath(srcToOut(importedSrcPath));
-
-      if (fromRbx != null && toRbx != null) {
-        final segments = RojoResolver.relative(fromRbx, toRbx);
-        final args = segments.map((s) => '"$s"').join(', ');
-        luauPath = '_RD.import(script, $args)';
-      } else {
-        final cleanUri = uri.replaceAll('.dart', '').replaceAll('/', '.');
-        luauPath = '_RD.import(script, "Parent", "$cleanUri")';
-      }
-    } else {
-      final cleanUri = uri.replaceAll('.dart', '').replaceAll('/', '.');
-      luauPath = '_RD.import(script, "Parent", "$cleanUri")';
-    }
+    final luauPath = _resolveImportPath(uri);
 
     try {
       final exportElement = node.libraryExport;
@@ -194,7 +192,7 @@ mixin ImportVisitor on RobloxVisitorBase {
 
     return LuauVariableDeclaration(
       name: varName,
-      initializer: LuauLiteral(value: 'require($luauPath)'),
+      initializer: LuauLiteral(value: luauPath),
     );
   }
 }
