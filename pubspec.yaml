@@ -1,6 +1,6 @@
 name: roblox_dart
 description: Dart-to-Luau transpiler for Roblox. Write Dart, compile to Luau with full Roblox API types and Rojo integration.
-version: 0.1.5
+version: 0.1.6
 homepage: https://github.com/Andzzio/roblox-dart
 repository: https://github.com/Andzzio/roblox-dart
 issue_tracker: https://github.com/Andzzio/roblox-dart/issues

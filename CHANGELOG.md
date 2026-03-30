@@ -34,3 +34,10 @@
 - Smarter imports: Automatically generates relative Roblox paths (e.g. `script.Parent.Shared`) across client/server boundaries.
 - Optimized performance: Improved compiler initialization with one-time project config parsing.
 - Refined internal architecture of the visitor pattern.
+
+## 0.1.6
+
+- Resolved fatal double `require()` chain-nesting bug on luau module resolution emitted by `import` directives.
+- **Cross-Boundary Service Injection:** Extracted Roblox-TS parity routing. Path compilation strictly evaluates `default.project.json` service nodes and automatically builds native entry points (`game:GetService(...)`) when traversing between Client, Server, and Shared scopes.
+- Improved robust AST path parser: Segments are deeply walked mapping relations like `..` strictly as independent `"Parent"` instances to prevent runtime Luau failures.
+- Added foundational integration test suit `import_visitor_test.dart` for compiling AST nodes internally safely.
