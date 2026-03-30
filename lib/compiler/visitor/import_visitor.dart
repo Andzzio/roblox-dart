@@ -5,6 +5,7 @@ import 'package:roblox_dart/compiler/visitor/roblox_visitor_base.dart';
 import 'package:roblox_dart/luau/expression/luau_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
 import 'package:roblox_dart/luau/statement/luau_variable_declaration.dart';
+import 'package:roblox_dart/rojo/rojo_resolver.dart';
 
 mixin ImportVisitor on RobloxVisitorBase {
   @override
@@ -66,26 +67,33 @@ mixin ImportVisitor on RobloxVisitorBase {
       final cleanUri = uri.split('/').last.replaceAll('.dart', '');
       luauPath = '_RD.import(script, "Parent", "$cleanUri")';
     } else {
-      if (currentFilePath != null && projectRoot != null) {
+      if (currentFilePath != null &&
+          projectRoot != null &&
+          rojoResolver != null) {
         final currentDir = p.dirname(currentFilePath!);
-        final importedFileAbsolute = p.normalize(p.join(currentDir, uri));
-        String relPathStr = p
-            .relative(importedFileAbsolute, from: currentDir)
-            .replaceAll('.dart', '');
+        final importedSrcPath = p.normalize(p.join(currentDir, uri));
 
-        final parts = relPathStr.split(p.separator);
-        List<String> segments = ['"Parent"'];
+        final srcRoot = p.join(projectRoot!, 'src');
+        final outRoot = p.join(projectRoot!, 'out');
 
-        for (var part in parts) {
-          if (part == '.') {
-            continue;
-          } else if (part == '..') {
-            segments.add('"Parent"');
-          } else {
-            segments.add('"$part"');
-          }
+        String srcToOut(String srcPath) {
+          final rel = p.relative(srcPath, from: srcRoot);
+          return p.join(outRoot, rel.replaceAll('.dart', '.luau'));
         }
-        luauPath = '_RD.import(script, ${segments.join(", ")})';
+
+        final fromRbx =
+            rojoResolver!.getRbxPathFromFilePath(srcToOut(currentFilePath!));
+        final toRbx =
+            rojoResolver!.getRbxPathFromFilePath(srcToOut(importedSrcPath));
+
+        if (fromRbx != null && toRbx != null) {
+          final segments = RojoResolver.relative(fromRbx, toRbx);
+          final args = segments.map((s) => '"$s"').join(', ');
+          luauPath = '_RD.import(script, $args)';
+        } else {
+          final cleanUri = uri.replaceAll('.dart', '').replaceAll('/', '.');
+          luauPath = '_RD.import(script, "Parent", "$cleanUri")';
+        }
       } else {
         final cleanUri = uri.replaceAll('.dart', '').replaceAll('/', '.');
         luauPath = '_RD.import(script, "Parent", "$cleanUri")';
@@ -135,26 +143,33 @@ mixin ImportVisitor on RobloxVisitorBase {
     importedNames.add(varName);
 
     String luauPath;
-    if (currentFilePath != null && projectRoot != null) {
+    if (currentFilePath != null &&
+        projectRoot != null &&
+        rojoResolver != null) {
       final currentDir = p.dirname(currentFilePath!);
-      final importedFileAbsolute = p.normalize(p.join(currentDir, uri));
-      String relPathStr = p
-          .relative(importedFileAbsolute, from: currentDir)
-          .replaceAll('.dart', '');
+      final importedSrcPath = p.normalize(p.join(currentDir, uri));
 
-      final parts = relPathStr.split(p.separator);
-      List<String> segmentsList = ['"Parent"'];
+      final srcRoot = p.join(projectRoot!, 'src');
+      final outRoot = p.join(projectRoot!, 'out');
 
-      for (var part in parts) {
-        if (part == '.') {
-          continue;
-        } else if (part == '..') {
-          segmentsList.add('"Parent"');
-        } else {
-          segmentsList.add('"$part"');
-        }
+      String srcToOut(String srcPath) {
+        final rel = p.relative(srcPath, from: srcRoot);
+        return p.join(outRoot, rel.replaceAll('.dart', '.luau'));
       }
-      luauPath = '_RD.import(script, ${segmentsList.join(", ")})';
+
+      final fromRbx =
+          rojoResolver!.getRbxPathFromFilePath(srcToOut(currentFilePath!));
+      final toRbx =
+          rojoResolver!.getRbxPathFromFilePath(srcToOut(importedSrcPath));
+
+      if (fromRbx != null && toRbx != null) {
+        final segments = RojoResolver.relative(fromRbx, toRbx);
+        final args = segments.map((s) => '"$s"').join(', ');
+        luauPath = '_RD.import(script, $args)';
+      } else {
+        final cleanUri = uri.replaceAll('.dart', '').replaceAll('/', '.');
+        luauPath = '_RD.import(script, "Parent", "$cleanUri")';
+      }
     } else {
       final cleanUri = uri.replaceAll('.dart', '').replaceAll('/', '.');
       luauPath = '_RD.import(script, "Parent", "$cleanUri")';

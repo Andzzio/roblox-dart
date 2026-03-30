@@ -10,6 +10,7 @@ import 'package:roblox_dart/luau/expression/luau_map_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
 import 'package:roblox_dart/luau/statement/luau_expression_statement.dart';
 import 'package:roblox_dart/luau/statement/luau_numeric__for_statement.dart';
+import 'package:roblox_dart/rojo/rojo_resolver.dart';
 
 abstract class RobloxVisitorBase extends SimpleAstVisitor<LuauNode> {
   List<LuauNode>? currentLoopUpdaters;
@@ -24,14 +25,14 @@ abstract class RobloxVisitorBase extends SimpleAstVisitor<LuauNode> {
   final Set<String> currentClassMembers = {};
   final Set<String> exports = {};
   final Set<String> importedNames = {};
+  RojoResolver? rojoResolver;
 
   String? translateType(String? dartType) {
     if (dartType == null || dartType == "void") return null;
 
     bool isNullable = dartType.endsWith("?");
-    String cleanType = isNullable
-        ? dartType.substring(0, dartType.length - 1)
-        : dartType;
+    String cleanType =
+        isNullable ? dartType.substring(0, dartType.length - 1) : dartType;
 
     const types = {
       "int": "number",
@@ -192,8 +193,7 @@ abstract class RobloxVisitorBase extends SimpleAstVisitor<LuauNode> {
     final updater = parts.updaters.first;
     String updaterSrc = updater.toSource().replaceAll(" ", "");
 
-    bool isSimpleInc =
-        updaterSrc == "$varName++" ||
+    bool isSimpleInc = updaterSrc == "$varName++" ||
         updaterSrc == "++$varName" ||
         updaterSrc == "$varName+=1" ||
         updaterSrc == "$varName=$varName+1";
@@ -312,6 +312,7 @@ abstract class RobloxVisitorBase extends SimpleAstVisitor<LuauNode> {
     tryDepth = 0;
     currentClassName = null;
     currentSuperClassName = null;
+    rojoResolver = null;
     allClassMembers.clear();
     staticClassMembers.clear();
     currentClassMembers.clear();

@@ -4,18 +4,23 @@ import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:roblox_dart/compiler/roblox_visitor.dart';
 import 'package:path/path.dart' as p;
+import 'package:roblox_dart/rojo/rojo_resolver.dart';
 
 class RobloxCompiler {
   final AnalysisContextCollection collection;
   final String? sourceRoot;
+  late final RojoResolver rojoResolver;
 
   RobloxCompiler({required String projectRoot, this.sourceRoot})
-    : collection = AnalysisContextCollection(
-        includedPaths: [
-          p.normalize(p.absolute(projectRoot)),
-          p.normalize(p.absolute(p.join(projectRoot, 'test'))),
-        ],
-      );
+      : collection = AnalysisContextCollection(
+          includedPaths: [
+            p.normalize(p.absolute(projectRoot)),
+            p.normalize(p.absolute(p.join(projectRoot, 'test'))),
+          ],
+        ),
+        rojoResolver = RojoResolver.fromPath(
+          p.join(p.normalize(p.absolute(projectRoot)), 'default.project.json'),
+        );
 
   Future<void> compileFile(File file) async {
     print("Analyzing source code...");
@@ -41,6 +46,8 @@ class RobloxCompiler {
 
     visitor.reset();
 
+    visitor.rojoResolver = rojoResolver;
+
     visitor.projectRoot = p.normalize(
       p.absolute(context.contextRoot.root.path),
     );
@@ -54,10 +61,8 @@ class RobloxCompiler {
         normalizedPath,
         from: Directory.current.path,
       );
-      final levels = p
-          .split(p.dirname(relativeFilePath))
-          .where((s) => s != '.')
-          .length;
+      final levels =
+          p.split(p.dirname(relativeFilePath)).where((s) => s != '.').length;
       final parentPrefix = List.filled(levels + 1, 'Parent').join('.');
       visitor.runtimePath =
           '(script.$parentPrefix :: any):WaitForChild("include"):WaitForChild("RuntimeLib")';

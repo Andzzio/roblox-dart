@@ -27,3 +27,10 @@
 - Improved `init` command template: Now generates a complete Client-Server-Shared project structure.
 - Added `src/shared/shared.dart` and example communication between server and client in the default template.
 - Refined project bootstrapping for a more professional developer experience.
+
+## 0.1.5
+
+- Native `Rojo` resolution: `init` and `import` now respect the `default.project.json` path structure.
+- Smarter imports: Automatically generates relative Roblox paths (e.g. `script.Parent.Shared`) across client/server boundaries.
+- Optimized performance: Improved compiler initialization with one-time project config parsing.
+- Refined internal architecture of the visitor pattern.
