@@ -41,3 +41,7 @@
 - **Cross-Boundary Service Injection:** Extracted Roblox-TS parity routing. Path compilation strictly evaluates `default.project.json` service nodes and automatically builds native entry points (`game:GetService(...)`) when traversing between Client, Server, and Shared scopes.
 - Improved robust AST path parser: Segments are deeply walked mapping relations like `..` strictly as independent `"Parent"` instances to prevent runtime Luau failures.
 - Added foundational integration test suit `import_visitor_test.dart` for compiling AST nodes internally safely.
+
+## 0.1.7
+
+- Fixed critical `RojoResolver` regression preventing `game:GetService(...)` cross-boundary emission natively on fresh compilations: The resolution system was wrongfully discarding `$path` mappings if output `out/` directories did not physically exist prior to the transpilation process.

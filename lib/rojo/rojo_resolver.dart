@@ -35,9 +35,7 @@ class RojoResolver {
     final nodePath = tree['\$path'];
     if (nodePath is String) {
       final full = p.normalize(p.join(basePath, nodePath));
-      if (Directory(full).existsSync()) {
-        _partitions.insert(0, _Partition(full, List.from(_rbxPath)));
-      }
+      _partitions.insert(0, _Partition(full, List.from(_rbxPath)));
     }
 
     for (final key in tree.keys) {

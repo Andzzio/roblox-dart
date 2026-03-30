@@ -7,7 +7,7 @@ void main() {
   final compiler = RobloxCompiler(projectRoot: Directory.current.path);
 
   group('Traducción', () {
-    final dartFiles = Directory('samples')
+    final dartFiles = Directory('example')
         .listSync(recursive: true)
         .whereType<File>()
         .where((f) => f.path.endsWith('.dart'));
@@ -37,7 +37,7 @@ void main() {
   group('Runtime', () {
     for (final name in standalone) {
       test(name, () async {
-        final result = await Process.run('luau', ['out/samples/$name']);
+        final result = await Process.run('luau', ['out/example/$name']);
         expect(result.exitCode, 0, reason: result.stderr.toString());
       });
     }
