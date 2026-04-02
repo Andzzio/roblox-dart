@@ -41,8 +41,7 @@ mixin ClassVisitor on RobloxVisitorBase {
       functionName = "set_$functionName";
     }
 
-    bool isLocal =
-        node.parent is Block ||
+    bool isLocal = node.parent is Block ||
         node.parent is BlockFunctionBody ||
         node.parent is FunctionDeclarationStatement;
 
@@ -110,25 +109,14 @@ mixin ClassVisitor on RobloxVisitorBase {
 
   @override
   LuauNode? visitClassDeclaration(ClassDeclaration node) {
-    String? className;
-    try {
-      className = (node as dynamic).name.lexeme;
-    } catch (_) {
-      try {
-        className = (node as dynamic).namePart.typeName.lexeme;
-      } catch (_) {
-        className = "UnknownClass";
-      }
-    }
+    String? className = node.namePart.typeName.lexeme;
     currentClassName = className;
     currentClassMembers.clear();
 
     String? superClassName;
     if (node.extendsClause != null) {
-      superClassName = node.extendsClause!.superclass
-          .toSource()
-          .split('<')
-          .first;
+      superClassName =
+          node.extendsClause!.superclass.toSource().split('<').first;
       currentSuperClassName = superClassName;
     } else {
       currentSuperClassName = null;
@@ -136,24 +124,28 @@ mixin ClassVisitor on RobloxVisitorBase {
 
     final dynamic dynamicNode = node;
     try {
-      final dynamic classElement =
-          dynamicNode.declaredElement ?? dynamicNode.declaredFragment?.element;
+      final dynamic classElement = dynamicNode.declaredFragment?.element;
       if (classElement != null) {
         final List allTypes = classElement.allSupertypes ?? [];
         for (var type in allTypes) {
           final dynamic element = type.element;
           if (element == null) continue;
-          final List members = element.methods;
-          for (var m in members) {
-            currentClassMembers.add(m.name);
+          final List methods = element.methods;
+          for (var m in methods) {
+            final String methodName = m.name;
+            if (methodName.isNotEmpty) currentClassMembers.add(methodName);
           }
           final List fields = element.fields;
           for (var f in fields) {
-            currentClassMembers.add(f.name);
+            final String fieldName = f.name;
+            if (fieldName.isNotEmpty) currentClassMembers.add(fieldName);
           }
         }
       }
-    } catch (e) { CompilerLogger.debug('Supertype introspection failed for $className: $e'); }
+    } catch (e, st) {
+      CompilerLogger.debug(
+          'Supertype introspection failed for $className: $e\n$st');
+    }
 
     final List<LuauNode> luauBody = [];
 
@@ -165,7 +157,9 @@ mixin ClassVisitor on RobloxVisitorBase {
         } catch (_) {
           try {
             mixinName = (mixin as dynamic).name2.lexeme;
-          } catch (e) { CompilerLogger.debug('Mixin name2 fallback failed: $e'); }
+          } catch (e) {
+            CompilerLogger.debug('Mixin name2 fallback failed: $e');
+          }
         }
         final mixinElement = mixin.element;
         if (mixinElement is MixinElement) {
