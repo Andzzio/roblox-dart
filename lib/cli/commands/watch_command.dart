@@ -53,7 +53,9 @@ class WatchCommand extends Command {
       if (event.type == FileSystemEvent.modify ||
           event.type == FileSystemEvent.create) {
         print('Changed: ${p.relative(event.path, from: cwd)}');
-        await _compile(compiler, File(event.path), cwd);
+        final freshCompiler =
+            RobloxCompiler(projectRoot: cwd, sourceRoot: srcDir.path);
+        await _compile(freshCompiler, File(event.path), cwd);
       }
     });
 

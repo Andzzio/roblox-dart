@@ -45,3 +45,8 @@
 ## 0.1.7
 
 - Fixed critical `RojoResolver` regression preventing `game:GetService(...)` cross-boundary emission natively on fresh compilations: The resolution system was wrongfully discarding `$path` mappings if output `out/` directories did not physically exist prior to the transpilation process.
+
+## 0.1.8
+
+- Fixed inherited field resolution across files: `visitClassDeclaration` now correctly populates `currentClassMembers` with supertype fields and methods using the analyzer 12.x API (`declaredFragment?.element` + `type.element`). Previously, a silent `NoSuchMethodError` on `declaredElement` caused the catch block to swallow the error, leaving inherited identifiers like `name` and `age` emitting bare variables instead of `self.name` and `self.age`.
+- Fixed `watch` command cache bug: Each file change now creates a fresh `RobloxCompiler` instance, preventing the `AnalysisContextCollection` from returning stale cached ASTs on recompilation.
