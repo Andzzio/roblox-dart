@@ -49,4 +49,4 @@
 ## 0.1.8
 
 - Fixed inherited field resolution across files: `visitClassDeclaration` now correctly populates `currentClassMembers` with supertype fields and methods using the analyzer 12.x API (`declaredFragment?.element` + `type.element`). Previously, a silent `NoSuchMethodError` on `declaredElement` caused the catch block to swallow the error, leaving inherited identifiers like `name` and `age` emitting bare variables instead of `self.name` and `self.age`.
-- Fixed `watch` command cache bug: Each file change now creates a fresh `RobloxCompiler` instance, preventing the `AnalysisContextCollection` from returning stale cached ASTs on recompilation.
+- Fixed `watch` command caché bug: Each file change now creates a fresh `RobloxCompiler` instance, preventing the `AnalysisContextCollection` from returning stale cached ASTs on recompilation.
