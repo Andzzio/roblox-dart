@@ -76,8 +76,7 @@ mixin ExpressionVisitor on RobloxVisitorBase {
         try {
           final dynamic dynElem = element;
           if (dynElem.isSetter == true) {
-            bool isInstance =
-                !dynElem.isStatic &&
+            bool isInstance = !dynElem.isStatic &&
                 element.enclosingElement is InterfaceElement;
             return LuauCallExpression(
               target: isInstance ? LuauLiteral(value: "self") : null,
@@ -295,6 +294,16 @@ mixin ExpressionVisitor on RobloxVisitorBase {
             args,
           );
           if (result != null) resultNode = LuauLiteral(value: result);
+        }
+
+        if (resultNode == null &&
+            targetName == "Instance" &&
+            methodName == "of") {
+          final typeArgs = node.typeArguments?.arguments;
+          if (typeArgs != null && typeArgs.isNotEmpty) {
+            final typeName = typeArgs.first.toSource().split('<').first;
+            resultNode = LuauLiteral(value: 'Instance.new("$typeName")');
+          }
         }
 
         if (resultNode == null) {
@@ -575,8 +584,8 @@ mixin ExpressionVisitor on RobloxVisitorBase {
     if (element != null) {
       isStaticMember =
           (element is PropertyAccessorElement && element.isStatic) ||
-          (element is VariableElement && element.isStatic) ||
-          (element is FieldElement && element.isStatic);
+              (element is VariableElement && element.isStatic) ||
+              (element is FieldElement && element.isStatic);
       try {
         final dynamic dynamicElement = element;
         if (dynamicElement.isStatic == true) isStaticMember = true;

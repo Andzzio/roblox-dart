@@ -5,3 +5,6 @@ export 'packages/types/udim2.dart';
 export 'packages/types/instance.dart';
 export 'packages/types/base_part.dart';
 export 'packages/types/humanoid.dart';
+export 'packages/types/part.dart';
+export 'packages/types/rbx_script_signal.dart';
+export 'packages/types/rbx_script_connection.dart';

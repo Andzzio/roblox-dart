@@ -18,4 +18,6 @@ class Instance {
   external Instance? findFirstChildWhichIsA(String className);
   external Instance? findFirstAncestorOfClass(String className);
   external Instance? findFirstDescendant(String name);
+
+  external static T of<T extends Instance>();
 }

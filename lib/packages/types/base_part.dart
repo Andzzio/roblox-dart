@@ -1,10 +1,11 @@
 import 'package:roblox_dart/packages/types/instance.dart';
+import 'package:roblox_dart/packages/types/rbx_script_signal.dart';
 import 'package:roblox_dart/packages/types/vector3.dart';
 import 'package:roblox_dart/packages/types/cframe.dart';
 import 'package:roblox_dart/packages/types/color3.dart';
 
-class BasePart extends Instance {
-  external factory BasePart([Instance? parent]);
+abstract class BasePart extends Instance {
+  external BasePart([Instance? parent]);
 
   external Vector3 get position;
   external set position(Vector3 value);
@@ -34,4 +35,7 @@ class BasePart extends Instance {
   external void applyImpulse(Vector3 impulse);
   external void applyAngularImpulse(Vector3 impulse);
   external Vector3 getVelocityAtPosition(Vector3 position);
+
+  external RBXScriptSignal<Function(BasePart)> get touched;
+  external RBXScriptSignal<Function(BasePart)> get touchEnded;
 }

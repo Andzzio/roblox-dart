@@ -56,6 +56,20 @@ class MacroResolver {
   }
 
   static String? _typeName(DartType type) {
-    return type.element?.name;
+    final name = type.element?.name;
+    if (name != null && RobloxMacroRegistry.isRobloxType(name)) {
+      return name;
+    }
+
+    if (type is InterfaceType) {
+      for (final supertype in type.allSupertypes) {
+        final superName = supertype.element.name;
+        if (RobloxMacroRegistry.isRobloxType(superName)) {
+          return superName;
+        }
+      }
+    }
+
+    return name;
   }
 }
