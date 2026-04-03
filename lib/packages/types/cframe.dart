@@ -20,6 +20,14 @@ class CFrame {
 
   external static CFrame lookAt(Vector3 at, Vector3 lookAt);
   external static CFrame fromEulerAnglesXYZ(double rx, double ry, double rz);
+  external static CFrame fromEulerAnglesYXZ(double rx, double ry, double rz);
+  external static CFrame fromOrientation(double rx, double ry, double rz);
+  external static CFrame fromMatrix(Vector3 pos, Vector3 vX, Vector3 vY,
+      [Vector3? vZ]);
+
+  external Vector3 toEulerAnglesXYZ();
+  external Vector3 toEulerAnglesYXZ();
+  external Vector3 toOrientation();
 
   external CFrame operator +(Vector3 other);
   external CFrame operator -(Vector3 other);

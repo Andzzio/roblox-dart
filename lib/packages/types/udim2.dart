@@ -8,4 +8,7 @@ class UDim2 {
 
   external static UDim2 fromScale(double x, double y);
   external static UDim2 fromOffset(double x, double y);
+
+  external UDim2 operator +(UDim2 other);
+  external UDim2 operator -(UDim2 other);
 }

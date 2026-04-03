@@ -9,7 +9,6 @@ class LuauAnonymousFunction extends LuauNode {
 
   @override
   String emit({int indent = 0}) {
-    print("LuauAnonymousFunction.emit indent=$indent");
     String endTabs = "\t" * indent;
 
     String paramsString = parameters

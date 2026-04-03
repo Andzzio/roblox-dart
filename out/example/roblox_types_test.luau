@@ -14,7 +14,7 @@ function main()
 	print(u)
 	local goal = Vector3.new(4, 5, 6)
 
-	local lerped = pos:Lerp(goal,0.5)
+	local lerped = pos:Lerp(goal, 0.5)
 
 	local d = pos:Dot(goal)
 

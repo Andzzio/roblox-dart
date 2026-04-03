@@ -10,6 +10,14 @@ class Vector3 {
   external static Vector3 get xAxis;
   external static Vector3 get yAxis;
   external static Vector3 get zAxis;
+  external static Vector3 get nan;
+
+  external Vector3 operator +(Vector3 other);
+  external Vector3 operator -(Vector3 other);
+  external Vector3 operator *(double scalar);
+  external Vector3 operator /(double scalar);
+  external Vector3 operator -();
+
   external double get magnitude;
   external Vector3 get unit;
 

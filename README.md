@@ -63,9 +63,11 @@ dart pub global activate roblox_dart
 Make sure the pub cache `bin` folder is in your system's **PATH** so you can run the `roblox-dart` command from anywhere.
 
 #### Windows
+
 On Windows, the pub cache is usually located at `%LOCALAPPDATA%\Pub\Cache\bin`.
 
 **PowerShell** (Run once, then restart the terminal):
+
 ```powershell
 $env:PATH += ";$env:LOCALAPPDATA\Pub\Cache\bin"
 # To make it permanent:
@@ -73,11 +75,13 @@ $env:PATH += ";$env:LOCALAPPDATA\Pub\Cache\bin"
 ```
 
 **Command Prompt**:
+
 ```cmd
 setx PATH "%PATH%;%LOCALAPPDATA%\Pub\Cache\bin"
 ```
 
 #### macOS / Linux
+
 Add this to your `~/.bashrc`, `~/.zshrc`, or `~/.bash_profile`:
 
 ```bash
@@ -89,6 +93,7 @@ export PATH="$HOME/.pub-cache/bin:$PATH"
 ## Quick start
 
 **macOS / Linux / Git Bash:**
+
 ```bash
 mkdir my-game && cd my-game
 roblox-dart init
@@ -96,6 +101,7 @@ roblox-dart watch
 ```
 
 **Windows (PowerShell / Command Prompt):**
+
 ```powershell
 mkdir my-game
 cd my-game
@@ -109,11 +115,11 @@ Then open Roblox Studio, connect Rojo, and start building.
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `roblox-dart init` | Creates project structure, `default.project.json`, and runs `dart pub get` |
-| `roblox-dart watch` | Compiles all files in `src/` and watches for changes |
-| `roblox-dart translate -t <file>` | Translates a single Dart file to Luau |
+| Command                           | Description                                                                |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `roblox-dart init`                | Creates project structure, `default.project.json`, and runs `dart pub get` |
+| `roblox-dart watch`               | Compiles all files in `src/` and watches for changes                       |
+| `roblox-dart translate -t <file>` | Translates a single Dart file to Luau                                      |
 
 ---
 
@@ -121,11 +127,11 @@ Then open Roblox Studio, connect Rojo, and start building.
 
 File naming determines the Roblox script type — same convention as roblox-ts:
 
-| File | Luau output | Roblox type |
-|------|-------------|-------------|
-| `foo.server.dart` | `foo.server.luau` | `Script` (server) |
+| File              | Luau output       | Roblox type            |
+| ----------------- | ----------------- | ---------------------- |
+| `foo.server.dart` | `foo.server.luau` | `Script` (server)      |
 | `foo.client.dart` | `foo.client.luau` | `LocalScript` (client) |
-| `foo.dart` | `foo.luau` | `ModuleScript` |
+| `foo.dart`        | `foo.luau`        | `ModuleScript`         |
 
 ---
 
@@ -188,38 +194,38 @@ part.destroy();                                 // → part:Destroy()
 
 ### Supported types
 
-| Type | Status |
-|------|--------|
-| `Vector3` | ✅ |
-| `CFrame` | ✅ |
-| `Color3` | ✅ |
-| `UDim2` | ✅ |
-| `Instance` | ✅ |
-| `BasePart` | ✅ |
-| `Humanoid` | ✅ |
-| `Workspace` | ✅ |
-| `Players` | ✅ |
-| `TweenService` | 🔜 |
-| `RemoteEvent` | 🔜 |
-| `RBXScriptSignal` | 🔜 |
+| Type              | Status |
+| ----------------- | ------ |
+| `Vector3`         | ✅     |
+| `CFrame`          | ✅     |
+| `Color3`          | ✅     |
+| `UDim2`           | ✅     |
+| `Instance`        | ✅     |
+| `BasePart`        | ✅     |
+| `Humanoid`        | ✅     |
+| `Workspace`       | ✅     |
+| `Players`         | ✅     |
+| `TweenService`    | 🔜     |
+| `RemoteEvent`     | 🔜     |
+| `RBXScriptSignal` | ✅     |
 
 ---
 
 ## Language features
 
-| Feature | Status |
-|---------|--------|
-| Classes + inheritance | ✅ |
-| Mixins | ✅ |
-| Static members | ✅ |
-| Getters / setters | ✅ |
-| Factory constructors | ✅ |
-| Null safety (`?.`, `??`, `??=`) | ✅ |
-| Generics (basic) | ✅ |
-| Enums | ✅ |
-| Closures / lambdas | ✅ |
-| `async` / `await` | 🔜 |
-| Extension methods | 🔜 |
+| Feature                         | Status |
+| ------------------------------- | ------ |
+| Classes + inheritance           | ✅     |
+| Mixins                          | ✅     |
+| Static members                  | ✅     |
+| Getters / setters               | ✅     |
+| Factory constructors            | ✅     |
+| Null safety (`?.`, `??`, `??=`) | ✅     |
+| Generics (basic)                | ✅     |
+| Enums                           | ✅     |
+| Closures / lambdas              | ✅     |
+| `async` / `await`               | 🔜     |
+| Extension methods               | 🔜     |
 
 ---
 
@@ -228,6 +234,7 @@ part.destroy();                                 // → part:Destroy()
 The type system is designed to scale. Adding a new type takes three steps:
 
 **1. Create the stub** (`lib/packages/types/tween_service.dart`):
+
 ```dart
 import 'package:roblox_dart/packages/types/instance.dart';
 
@@ -238,11 +245,13 @@ class TweenService extends Instance {
 ```
 
 **2. Register it** (`lib/compiler/macros/roblox/roblox_macro_registry.dart`):
+
 ```dart
 'TweenService': RobloxTypeMacro(),
 ```
 
 **3. Export it** (`lib/services.dart`):
+
 ```dart
 TweenService get tweenService => throw UnimplementedError('Transpiler only');
 ```

@@ -60,3 +60,12 @@
 - Fixed lambda indentation — callbacks now emit correctly indented `end` and body.
 - Fixed `=>` void lambdas — no longer emits unnecessary `return` for void expressions.
 - Automatic PascalCase resolution for any subtype of `Instance` — new types added to stubs automatically inherit Roblox macro behavior without manual registry entries.
+
+## 0.1.10
+
+- Completed Instance API: added `archivable`, `clearAllChildren`, `getPropertyChangedSignal`, and events `childAdded`, `childRemoved`, `descendantAdded`, `descendantRemoving`, `ancestryChanged`
+- Completed BasePart API: added `canTouch`, `canQuery`, `reflectance`, `collisionGroup`, `mass`, assembly velocity properties, `canCollideWith`, `isTouching`
+- Completed Humanoid API: added `useJumpPower`, `autoRotate`, `moveDirection`, `cameraOffset`, state methods, and events `died`, `healthChanged`, `stateChanged`, `running`, `jumping`, `climbing`, `freeFalling`, `moveToFinished`
+- Completed Players API: added `characterAutoLoads`, `respawnTime`, `getNameFromUserIdAsync`, and events `playerAdded`, `playerRemoving`
+- Completed Workspace API: added `distributedGameTime`, `allowThirdPartySales`, `getPartsInPart`, `findPartOnRay`
+- Completed Vector3, CFrame, Color3, UDim2: added operators and missing static constructors
