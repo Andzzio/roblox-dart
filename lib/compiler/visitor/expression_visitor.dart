@@ -14,8 +14,10 @@ import 'package:roblox_dart/luau/expression/luau_call_expression.dart';
 import 'package:roblox_dart/luau/expression/luau_function_invocation.dart';
 import 'package:roblox_dart/luau/expression/luau_literal.dart';
 import 'package:roblox_dart/luau/luau_node.dart';
+import 'package:roblox_dart/luau/statement/luau_expression_statement.dart';
 import 'package:roblox_dart/luau/statement/luau_pair_for_each.dart';
 import 'package:roblox_dart/luau/statement/luau_return_statement.dart';
+import 'package:analyzer/dart/element/type.dart';
 
 mixin ExpressionVisitor on RobloxVisitorBase {
   @override
@@ -307,6 +309,21 @@ mixin ExpressionVisitor on RobloxVisitorBase {
         }
 
         if (resultNode == null) {
+          final isRoblox =
+              MacroResolver.isRobloxType(targetExpression.staticType);
+          if (isRoblox) {
+            final pascalMethod =
+                methodName[0].toUpperCase() + methodName.substring(1);
+            resultNode = LuauCallExpression(
+              target: targetLego,
+              methodName: pascalMethod,
+              arguments: finalLuauArgs,
+              useColon: true,
+            );
+          }
+        }
+
+        if (resultNode == null) {
           final result = MacroResolver.resolveMethod(
             targetExpression.staticType,
             methodName,
@@ -419,7 +436,15 @@ mixin ExpressionVisitor on RobloxVisitorBase {
     } else if (body is ExpressionFunctionBody) {
       final legoValue = body.expression.accept(this);
       if (legoValue != null) {
-        luauBody.add(LuauReturnStatement(expression: legoValue));
+        final returnType = body.expression.staticType;
+        final isVoid = returnType == null ||
+            returnType is VoidType ||
+            returnType.isDartCoreNull;
+        if (isVoid) {
+          luauBody.add(LuauExpressionStatement(expression: legoValue));
+        } else {
+          luauBody.add(LuauReturnStatement(expression: legoValue));
+        }
       }
     }
 

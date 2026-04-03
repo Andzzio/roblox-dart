@@ -15,13 +15,12 @@ class LuauCallExpression extends LuauNode {
 
   @override
   String emit({int indent = 0}) {
-    final String argsText = arguments
-        .map((arg) => arg.emit(indent: indent))
-        .join(", ");
+    final String argsText =
+        arguments.map((arg) => arg.emit(indent: indent)).join(", ");
 
     if (target != null) {
       final operator = useColon ? ":" : ".";
-      return "${target!.emit()}$operator$methodName($argsText)";
+      return "${target!.emit(indent: indent)}$operator$methodName($argsText)";
     }
 
     final operator = useColon ? ":" : "";

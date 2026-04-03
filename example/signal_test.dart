@@ -18,7 +18,6 @@ void main() {
 
   part.touched.wait();
 
-  // disconnect
   connection.disconnect();
   connection2.disconnect();
 }

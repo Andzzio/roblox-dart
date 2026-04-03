@@ -9,7 +9,8 @@ class LuauAnonymousFunction extends LuauNode {
 
   @override
   String emit({int indent = 0}) {
-    String tabs = "\t" * indent;
+    print("LuauAnonymousFunction.emit indent=$indent");
+    String endTabs = "\t" * indent;
 
     String paramsString = parameters
         .map((p) => p.type != null ? "${p.name}: ${p.type}" : p.name)
@@ -19,9 +20,10 @@ class LuauAnonymousFunction extends LuauNode {
 
     for (var node in body) {
       output += node.emit(indent: indent + 1);
+      if (!output.endsWith("\n")) output += "\n";
     }
 
-    output += "${tabs}end";
+    output += "${endTabs}end";
     return output;
   }
 }

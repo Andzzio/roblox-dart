@@ -178,7 +178,7 @@ end)()
 	print("Bonuses:")
 		for _k, _v in pairs(epicSword.statBonuses) do
 		(function(key, value)
-			print(`	+ {value} to {key}`)
+						print(`	+ {value} to {key}`)
 		end)(_k, _v)
 	end
 

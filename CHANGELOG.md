@@ -50,3 +50,13 @@
 
 - Fixed inherited field resolution across files: `visitClassDeclaration` now correctly populates `currentClassMembers` with supertype fields and methods using the analyzer 12.x API (`declaredFragment?.element` + `type.element`). Previously, a silent `NoSuchMethodError` on `declaredElement` caused the catch block to swallow the error, leaving inherited identifiers like `name` and `age` emitting bare variables instead of `self.name` and `self.age`.
 - Fixed `watch` command caché bug: Each file change now creates a fresh `RobloxCompiler` instance, preventing the `AnalysisContextCollection` from returning stale cached ASTs on recompilation.
+
+## 0.1.9
+
+- Added `RBXScriptSignal<T>` and `RBXScriptConnection` stubs with `connect`, `once`, `wait` and `disconnect` support.
+- Added `touched` and `touchEnded` events to `BasePart`.
+- Added `Instance.of<T>()` — idiomatic Dart pattern for instantiating Roblox types with full linter support and autocompletion.
+- Added `Part` stub as instanciable subtype of `BasePart`.
+- Fixed lambda indentation — callbacks now emit correctly indented `end` and body.
+- Fixed `=>` void lambdas — no longer emits unnecessary `return` for void expressions.
+- Automatic PascalCase resolution for any subtype of `Instance` — new types added to stubs automatically inherit Roblox macro behavior without manual registry entries.
