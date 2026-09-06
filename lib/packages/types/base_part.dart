@@ -36,10 +36,10 @@ abstract class BasePart extends Instance {
   external String get collisionGroup;
   external set collisionGroup(String value);
 
-  external Vector3 get velocity;
-  external set velocity(Vector3 value);
-  external Vector3 get rotVelocity;
-  external set rotVelocity(Vector3 value);
+  //external Vector3 get velocity;
+  //external set velocity(Vector3 value);
+  //external Vector3 get rotVelocity;
+  //external set rotVelocity(Vector3 value);
   external double get mass;
   external Vector3 get assemblyLinearVelocity;
   external set assemblyLinearVelocity(Vector3 value);
@@ -50,7 +50,8 @@ abstract class BasePart extends Instance {
   external void applyAngularImpulse(Vector3 impulse);
   external Vector3 getVelocityAtPosition(Vector3 position);
   external bool canCollideWith(BasePart part);
-  external bool isTouching(BasePart part);
+  //external bool isTouching(BasePart part);
+  //external List<BasePart> getTouchingParts();
 
   external RBXScriptSignal<Function(BasePart)> get touched;
   external RBXScriptSignal<Function(BasePart)> get touchEnded;
